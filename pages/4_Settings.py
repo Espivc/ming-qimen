@@ -4,7 +4,7 @@ Phase 5: Enhanced BaZi with Birth Date Calculator
 """
 
 import streamlit as st
-from datetime import datetime, timedelta, timezone, date, time
+from datetime import datetime, timedelta, timezone, date
 import sys
 import os
 
@@ -71,11 +71,24 @@ with tab1:
         )
     
     with col2:
-        birth_time = st.time_input(
-            "🕐 Birth Time 出生时间",
-            value=time(12, 0),
-            help="Select your time of birth (use 12:00 if unknown)"
-        )
+        # Use number inputs for exact hour and minute
+        time_cols = st.columns(2)
+        with time_cols[0]:
+            birth_hour = st.number_input(
+                "Hour 时",
+                min_value=0,
+                max_value=23,
+                value=12,
+                help="Birth hour (0-23)"
+            )
+        with time_cols[1]:
+            birth_minute = st.number_input(
+                "Minute 分",
+                min_value=0,
+                max_value=59,
+                value=0,
+                help="Birth minute (0-59)"
+            )
     
     st.caption("⚠️ Note: Chinese BaZi uses solar calendar. Month boundaries are based on solar terms, not calendar months.")
     
@@ -86,14 +99,14 @@ with tab1:
                 year=birth_date.year,
                 month=birth_date.month,
                 day=birth_date.day,
-                hour=birth_time.hour
+                hour=birth_hour
             )
             st.session_state.bazi_calculated = profile
             
             # Auto-save to user profile
             st.session_state.user_profile = {
                 'birth_date': birth_date.isoformat(),
-                'birth_time': birth_time.strftime("%H:%M"),
+                'birth_time': f"{birth_hour:02d}:{birth_minute:02d}",
                 'day_master': f"{profile['day_master']['pinyin']} {profile['day_master']['chinese']}",
                 'element': profile['day_master']['element'],
                 'polarity': profile['day_master']['polarity'],
