@@ -1,0 +1,66 @@
+/* Ming Qimen - Custom Styles v2.0 */
+
+/* Dark Navy Theme */
+:root {
+    --primary-gold: #FFD700;
+    --dark-navy: #0a0a1a;
+    --medium-navy: #1a1a2e;
+    --light-navy: #2a2a4e;
+}
+
+/* Global Background */
+.stApp {
+    background: linear-gradient(180deg, var(--dark-navy) 0%, var(--medium-navy) 100%);
+}
+
+/* Headers with Gold */
+h1, h2, h3 {
+    color: #FFD700 !important;
+}
+
+/* Button hover effects */
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0d0d20 0%, #1a1a30 100%);
+}
+
+/* Metric styling */
+[data-testid="stMetricValue"] {
+    color: #FFD700;
+}
+
+/* Success/Warning/Error states */
+.element-container .stSuccess {
+    background: rgba(76, 175, 80, 0.1);
+    border-left: 4px solid #4CAF50;
+}
+
+.element-container .stWarning {
+    background: rgba(255, 152, 0, 0.1);
+    border-left: 4px solid #FF9800;
+}
+
+.element-container .stError {
+    background: rgba(244, 67, 54, 0.1);
+    border-left: 4px solid #F44336;
+}
+
+/* Palace grid cards */
+.palace-card {
+    background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+    border: 1px solid #FFD700;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 5px;
+}
+
+/* Recommended highlight */
+.recommended {
+    border: 3px solid #FFD700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
