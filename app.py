@@ -153,16 +153,53 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # User profile summary
+    # User profile summary (ENHANCED with BaZi)
     if st.session_state.user_profile.get('day_master'):
         profile = st.session_state.user_profile
-        st.markdown("### 👤 Your Profile")
-        st.markdown(f"**Day Master:** {profile.get('day_master', 'Not set')}")
-        st.markdown(f"**Strength:** {profile.get('strength', 'Not set')}")
+        st.markdown("### 👤 Your BaZi")
+        
+        # Day Master with styling
+        dm = profile.get('day_master', 'Not set')
+        element = profile.get('element', '')
+        strength = profile.get('strength', '')
+        
+        element_colors = {
+            'Wood': '#4CAF50', 'Fire': '#F44336', 
+            'Earth': '#FF9800', 'Metal': '#9E9E9E', 'Water': '#2196F3'
+        }
+        elem_color = element_colors.get(element, '#888')
+        
+        st.markdown(f"**Day Master:** <span style='color:{elem_color};font-weight:bold'>{dm}</span>", unsafe_allow_html=True)
+        st.markdown(f"**Element:** {element} ({profile.get('polarity', '')})")
+        st.markdown(f"**Strength:** {strength}")
         
         useful = profile.get('useful_gods', [])
         if useful:
-            st.markdown(f"**Helpful Elements:** {', '.join(useful)}")
+            st.markdown(f"**Helpful:** ✅ {', '.join(useful)}")
+        
+        unfav = profile.get('unfavorable', [])
+        if unfav:
+            st.markdown(f"**Avoid:** ❌ {', '.join(unfav)}")
+        
+        profile_type = profile.get('profile', '')
+        if profile_type:
+            # Shorten if too long
+            short_profile = profile_type[:25] + "..." if len(profile_type) > 25 else profile_type
+            st.markdown(f"**Type:** {short_profile}")
+        
+        # Special structures indicators
+        specials = []
+        if profile.get('wealth_vault'):
+            specials.append("💰 Wealth Vault")
+        if profile.get('nobleman'):
+            specials.append("👑 Nobleman")
+        if specials:
+            st.markdown(" | ".join(specials))
+    else:
+        st.markdown("### 👤 Profile")
+        st.caption("No BaZi profile set")
+        if st.button("🎂 Calculate BaZi", use_container_width=True, key="sidebar_bazi"):
+            st.switch_page("pages/4_Settings.py")
 
 # ============================================================================
 # MAIN CONTENT
@@ -239,7 +276,7 @@ if summaries:
     st.markdown("---")
     
     # ============================================================================
-    # TOPIC GRID
+    # TOPIC GRID (FIXED)
     # ============================================================================
     
     st.markdown("## 🎯 All Topics Overview")
@@ -257,16 +294,12 @@ if summaries:
                     # Determine styling based on score
                     if s['score'] >= 7:
                         border_color = "#4CAF50"
-                        bg_alpha = "0.2"
                     elif s['score'] >= 5:
                         border_color = "#2196F3"
-                        bg_alpha = "0.15"
                     elif s['score'] >= 3:
                         border_color = "#FF9800"
-                        bg_alpha = "0.1"
                     else:
                         border_color = "#F44336"
-                        bg_alpha = "0.1"
                     
                     rank_badge = ""
                     if idx == 0:
@@ -276,33 +309,30 @@ if summaries:
                     elif idx == 2:
                         rank_badge = "🥉 3rd"
                     
-                    st.markdown(f"""
-                    <div style="background: rgba(30, 30, 50, 0.8); 
-                                border: 2px solid {border_color}; 
-                                border-radius: 12px; 
-                                padding: 15px; 
-                                margin: 5px 0;
-                                min-height: 160px;">
-                        <div style="text-align: right; font-size: 0.7em; color: {border_color};">
-                            {rank_badge}
-                        </div>
-                        <div style="font-size: 2em; text-align: center;">{s['icon']}</div>
-                        <div style="text-align: center; color: #FFD700; font-weight: bold; font-size: 1.1em;">
-                            {s['topic']}
-                        </div>
-                        <div style="text-align: center; color: #888; font-size: 0.8em;">
-                            Palace {s['palace']}
-                        </div>
-                        <div style="text-align: center; margin-top: 10px;">
-                            <span style="background: {border_color}; color: #fff; padding: 3px 12px; border-radius: 15px; font-size: 0.9em;">
-                                {s['score']}/10
-                            </span>
-                        </div>
-                        <div style="text-align: center; color: #666; font-size: 0.75em; margin-top: 8px;">
-                            {s['door']} + {s['star']}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # Use container for proper rendering
+                    with st.container():
+                        st.markdown(
+                            f'<div style="background: rgba(30, 30, 50, 0.8); '
+                            f'border: 2px solid {border_color}; '
+                            f'border-radius: 12px; '
+                            f'padding: 15px; '
+                            f'margin: 5px 0; '
+                            f'min-height: 160px; text-align: center;">'
+                            f'<div style="text-align: right; font-size: 0.7em; color: {border_color}; height: 18px;">'
+                            f'{rank_badge}</div>'
+                            f'<div style="font-size: 2em;">{s["icon"]}</div>'
+                            f'<div style="color: #FFD700; font-weight: bold; font-size: 1.1em;">'
+                            f'{s["topic"]}</div>'
+                            f'<div style="color: #888; font-size: 0.8em;">'
+                            f'Palace {s["palace"]}</div>'
+                            f'<div style="margin-top: 10px;">'
+                            f'<span style="background: {border_color}; color: #fff; padding: 3px 12px; border-radius: 15px; font-size: 0.9em;">'
+                            f'{s["score"]}/10</span></div>'
+                            f'<div style="color: #666; font-size: 0.75em; margin-top: 8px;">'
+                            f'{s["door"]} + {s["star"]}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
                     
                     if st.button(f"Analyze {s['topic']}", key=f"btn_{s['palace']}", use_container_width=True):
                         st.session_state.selected_palace = s['palace']
