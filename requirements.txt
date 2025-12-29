@@ -1,0 +1,15 @@
+# Ming Qimen 明奇门 - Requirements
+# Phase 4: Real QMDJ Calculations
+
+streamlit>=1.28.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+
+# QMDJ Calculation Engine
+# Note: kinqimen requires sxtwl which has C++ dependencies
+# If kinqimen fails to install, the app will use fallback calculations
+kinqimen>=0.0.6
+sxtwl>=2.0.0
+
+# Export utilities
+openpyxl>=3.1.0
