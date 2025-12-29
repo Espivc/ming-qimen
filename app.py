@@ -1,6 +1,6 @@
 """
-Ming Qimen 明奇门 - Dashboard v2.0
-Phase 4: Real QMDJ calculations with kinqimen integration
+Ming Qimen 明奇门 - Dashboard v3.2
+Phase 5: Fixed navigation and session persistence
 
 "Clarity for the People" - Ancient Wisdom, Made Bright and Simple
 """
@@ -50,43 +50,9 @@ st.markdown("""
         color: #FFD700 !important;
     }
     
-    /* Card styling */
-    .palace-card {
-        background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
-        border: 1px solid #FFD700;
-        border-radius: 15px;
-        padding: 20px;
-        margin: 10px 0;
-        text-align: center;
-    }
-    
-    .palace-card.recommended {
-        border: 3px solid #FFD700;
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-    }
-    
-    /* Score badge */
-    .score-badge {
-        background: #FFD700;
-        color: #000;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-weight: bold;
-    }
-    
-    /* Topic grid */
-    .topic-button {
-        background: #1e1e2e;
-        border: 1px solid #444;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        transition: all 0.3s;
-    }
-    
-    .topic-button:hover {
-        border-color: #FFD700;
-        transform: translateY(-2px);
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0d0d20 0%, #1a1a30 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -113,93 +79,104 @@ if 'analyses' not in st.session_state:
 if 'user_profile' not in st.session_state:
     st.session_state.user_profile = {}
 
+if 'bazi_calculated' not in st.session_state:
+    st.session_state.bazi_calculated = None
+
+# Birth date persistence
+if 'birth_year' not in st.session_state:
+    st.session_state.birth_year = 1990
+if 'birth_month' not in st.session_state:
+    st.session_state.birth_month = 1
+if 'birth_day' not in st.session_state:
+    st.session_state.birth_day = 1
+if 'birth_hour' not in st.session_state:
+    st.session_state.birth_hour = 12
+if 'birth_minute' not in st.session_state:
+    st.session_state.birth_minute = 0
+
 # ============================================================================
 # SIDEBAR
 # ============================================================================
 
 with st.sidebar:
-    st.markdown("## 🌟 Ming Qimen")
-    st.markdown("*明奇门 - Clarity for the People*")
-    
-    st.markdown("---")
-    
     # Current time display
     now = get_singapore_time()
     ch_char, ch_pinyin, ch_animal = get_chinese_hour(now.hour)
     
-    st.markdown("### 🕐 Current Time")
-    st.markdown(f"**{now.strftime('%Y-%m-%d %H:%M')}** SGT")
     st.markdown(f"**{ch_char}時** ({ch_pinyin} - {ch_animal})")
     
     st.markdown("---")
     
-    # Quick navigation
+    # Navigation
     st.markdown("### 📍 Navigation")
     
     if st.button("📊 Generate Chart", use_container_width=True):
-        st.switch_page("pages/1_Chart.py")
+        st.switch_page("pages/Chart.py")
     
     if st.button("📤 Export Reading", use_container_width=True):
-        st.switch_page("pages/2_Export.py")
+        st.switch_page("pages/Export.py")
     
     if st.button("📜 History", use_container_width=True):
-        st.switch_page("pages/3_History.py")
+        st.switch_page("pages/History.py")
     
     if st.button("⚙️ Settings", use_container_width=True):
-        st.switch_page("pages/4_Settings.py")
+        st.switch_page("pages/Settings.py")
     
     if st.button("❓ Help & Guide", use_container_width=True):
-        st.switch_page("pages/5_Help.py")
+        st.switch_page("pages/Help.py")
     
     st.markdown("---")
     
-    # User profile summary (ENHANCED with BaZi)
+    # BaZi Profile Display (ENHANCED)
     if st.session_state.user_profile.get('day_master'):
         profile = st.session_state.user_profile
+        
         st.markdown("### 👤 Your BaZi")
         
-        # Day Master with styling
+        # Day Master with element color
         dm = profile.get('day_master', 'Not set')
         element = profile.get('element', '')
-        strength = profile.get('strength', '')
         
         element_colors = {
-            'Wood': '#4CAF50', 'Fire': '#F44336', 
-            'Earth': '#FF9800', 'Metal': '#9E9E9E', 'Water': '#2196F3'
+            'Wood': '#4CAF50',
+            'Fire': '#F44336',
+            'Earth': '#FF9800',
+            'Metal': '#9E9E9E',
+            'Water': '#2196F3'
         }
         elem_color = element_colors.get(element, '#888')
         
         st.markdown(f"**Day Master:** <span style='color:{elem_color};font-weight:bold'>{dm}</span>", unsafe_allow_html=True)
         st.markdown(f"**Element:** {element} ({profile.get('polarity', '')})")
-        st.markdown(f"**Strength:** {strength}")
+        st.markdown(f"**Strength:** {profile.get('strength', '')}")
         
+        # Useful Gods
         useful = profile.get('useful_gods', [])
         if useful:
             st.markdown(f"**Helpful:** ✅ {', '.join(useful)}")
         
+        # Unfavorable
         unfav = profile.get('unfavorable', [])
         if unfav:
             st.markdown(f"**Avoid:** ❌ {', '.join(unfav)}")
         
+        # Profile type
         profile_type = profile.get('profile', '')
         if profile_type:
-            # Shorten if too long
             short_profile = profile_type[:25] + "..." if len(profile_type) > 25 else profile_type
             st.markdown(f"**Type:** {short_profile}")
         
-        # Special structures indicators
-        specials = []
+        # Special structures
         if profile.get('wealth_vault'):
-            specials.append("💰 Wealth Vault")
+            st.markdown("💰 **Wealth Vault**")
         if profile.get('nobleman'):
-            specials.append("👑 Nobleman")
-        if specials:
-            st.markdown(" | ".join(specials))
+            st.markdown("👑 **Nobleman**")
+            
     else:
         st.markdown("### 👤 Profile")
         st.caption("No BaZi profile set")
         if st.button("🎂 Calculate BaZi", use_container_width=True, key="sidebar_bazi"):
-            st.switch_page("pages/4_Settings.py")
+            st.switch_page("pages/Settings.py")
 
 # ============================================================================
 # MAIN CONTENT
@@ -336,7 +313,7 @@ if summaries:
                     
                     if st.button(f"Analyze {s['topic']}", key=f"btn_{s['palace']}", use_container_width=True):
                         st.session_state.selected_palace = s['palace']
-                        st.switch_page("pages/1_Chart.py")
+                        st.switch_page("pages/Chart.py")
 
 # ============================================================================
 # QUICK ACTIONS
@@ -349,22 +326,22 @@ action_cols = st.columns(4)
 
 with action_cols[0]:
     if st.button("📊 Full Chart Analysis", use_container_width=True, type="primary"):
-        st.switch_page("pages/1_Chart.py")
+        st.switch_page("pages/Chart.py")
 
 with action_cols[1]:
     if st.button("💼 Career Reading", use_container_width=True):
         st.session_state.selected_palace = 1
-        st.switch_page("pages/1_Chart.py")
+        st.switch_page("pages/Chart.py")
 
 with action_cols[2]:
     if st.button("💰 Wealth Reading", use_container_width=True):
         st.session_state.selected_palace = 4
-        st.switch_page("pages/1_Chart.py")
+        st.switch_page("pages/Chart.py")
 
 with action_cols[3]:
     if st.button("💕 Relationship Reading", use_container_width=True):
         st.session_state.selected_palace = 2
-        st.switch_page("pages/1_Chart.py")
+        st.switch_page("pages/Chart.py")
 
 # ============================================================================
 # ABOUT SECTION
@@ -384,34 +361,14 @@ with st.expander("ℹ️ About Ming Qimen"):
     
     I created Ming Qimen because I believe wisdom shouldn't come with a price tag or a headache.
     
-    My name is **Beng (明)**, which means **'Brightness'**. My goal is to use that light to clear 
-    the fog of ancient calculations. Too many apps are built for experts; this one is built for **you**.
-    
-    **No paywalls. No complex data entry. Just clear guidance to help you find your way, for free.**
+    **No paywalls. No complex data entry. Just clear guidance.**
     
     ---
     
     #### What is Qi Men Dun Jia?
     
-    Qi Men Dun Jia (奇門遁甲) is one of the most powerful ancient Chinese divination systems.
-    Dating back over 4,000 years, it was originally used by emperors and military strategists 
-    to time important decisions.
-    
-    Today, we use it for:
-    - 💼 **Career** - Job changes, business decisions
-    - 💰 **Wealth** - Investments, financial timing
-    - 💕 **Relationships** - Love, partnerships
-    - 💪 **Health** - Wellness timing
-    - 🎯 **Personal** - Daily guidance
-    
-    ---
-    
-    #### How It Works
-    
-    1. **Select a Topic** - What do you need guidance on?
-    2. **Choose a Time** - Current time or a specific moment
-    3. **Get Your Reading** - We calculate the cosmic energy pattern
-    4. **Receive Guidance** - Clear, actionable advice
+    Qi Men Dun Jia (奇門遁甲) is one of the most powerful ancient Chinese divination systems,
+    dating back over 4,000 years. We use it for career, wealth, relationships, and daily guidance.
     
     ---
     
@@ -425,7 +382,6 @@ with st.expander("ℹ️ About Ming Qimen"):
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.85em;">
-    🌟 <strong>Ming Qimen 明奇门</strong> v2.0 | Phase 4 - Real QMDJ Calculations<br>
-    Singapore Time (UTC+8) | <em>Clarity for the People</em>
+    🌟 <strong>Ming Qimen 明奇门</strong> v3.2 | <em>Clarity for the People</em>
 </div>
 """, unsafe_allow_html=True)
