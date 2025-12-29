@@ -1,7 +1,7 @@
 """
 BaZi Calculator Page
 ====================
-Streamlit page for Ming Qimen Project 2
+Ming Qimen 明奇门 v3.0 - Page 6
 
 Features:
 - Birth date/time input
@@ -17,10 +17,27 @@ import streamlit as st
 from datetime import datetime, date, time
 import json
 from typing import Dict, Optional
+import sys
+import os
 
-# Import core calculation engine
-# In production, this would be: from utils.bazi_calculator_core import *
-# For now, we include essential functions inline
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Try to import from core module, fallback to inline if not available
+try:
+    from core.bazi_calculator_core import (
+        HEAVENLY_STEMS, EARTHLY_BRANCHES, 
+        generate_complete_ten_gods_mapping,
+        assess_day_master_strength,
+        calculate_useful_gods,
+        detect_special_structures,
+        calculate_activation_percentage,
+        get_stem_by_chinese
+    )
+    CORE_IMPORTED = True
+except ImportError:
+    CORE_IMPORTED = False
+    # Fallback: use inline constants (defined below)
 
 # =============================================================================
 # CONSTANTS (Inline for standalone operation)
