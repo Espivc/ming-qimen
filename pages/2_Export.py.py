@@ -1,23 +1,46 @@
 """
-Enhanced Export Page - Universal Schema v2.0
+Enhanced Export Page - Universal Schema v2.1
 =============================================
-Complete BaZi integration for Ming Qimen Project 2
+Ming Qimen 明奇门 v3.0 - Page 2
+
+Features:
+- Full Four Pillars in JSON export
+- Complete Ten Gods mapping
+- Special structures detection
+- Useful God activation percentages
+- Auto-calculated BaZi alignment score
+- QMDJ + BaZi integrated export
 """
 
 import streamlit as st
 from datetime import datetime, timezone, timedelta
 import json
 from typing import Dict, List
+import sys
+import os
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Try to import from core module
+try:
+    from core.bazi_calculator_core import (
+        calculate_bazi_alignment_score,
+        ELEMENT_PRODUCES, ELEMENT_PRODUCED_BY, ELEMENT_CONTROLLED_BY
+    )
+    CORE_IMPORTED = True
+except ImportError:
+    CORE_IMPORTED = False
+    # Fallback: define inline
+    ELEMENT_PRODUCES = {"Wood": "Fire", "Fire": "Earth", "Earth": "Metal", "Metal": "Water", "Water": "Wood"}
+    ELEMENT_PRODUCED_BY = {"Wood": "Water", "Fire": "Wood", "Earth": "Fire", "Metal": "Earth", "Water": "Metal"}
+    ELEMENT_CONTROLLED_BY = {"Wood": "Metal", "Fire": "Water", "Earth": "Wood", "Metal": "Fire", "Water": "Earth"}
+
+# Page config
 st.set_page_config(page_title="Export | 导出", page_icon="📤", layout="wide")
 
 # Singapore timezone
 SGT = timezone(timedelta(hours=8))
-
-# Element relationships
-ELEMENT_PRODUCES = {"Wood": "Fire", "Fire": "Earth", "Earth": "Metal", "Metal": "Water", "Water": "Wood"}
-ELEMENT_PRODUCED_BY = {"Wood": "Water", "Fire": "Wood", "Earth": "Fire", "Metal": "Earth", "Water": "Metal"}
-ELEMENT_CONTROLLED_BY = {"Wood": "Metal", "Fire": "Water", "Earth": "Wood", "Metal": "Fire", "Water": "Earth"}
 
 def calculate_bazi_alignment_score(bazi_data: Dict, qmdj_components: Dict) -> Dict:
     """Calculate BaZi alignment score based on QMDJ components"""
