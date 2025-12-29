@@ -1,6 +1,6 @@
 # 🌟 MING QIMEN 明奇门 - PROJECT STATE TRACKER
 Last Updated: 2025-12-29
-Version: 4.0 (Phase 4 - Real QMDJ Calculations)
+Version: 5.0 (Phase 5 - Enhanced BaZi Calculator)
 Status: 🟡 READY FOR DEPLOYMENT
 
 ---
@@ -14,48 +14,37 @@ Status: 🟡 READY FOR DEPLOYMENT
 ---
 
 ## 📊 PROJECT OVERVIEW
-- **Purpose:** Beginner-friendly QMDJ guidance system with real calculations
+- **Purpose:** Beginner-friendly QMDJ + BaZi guidance system
 - **Target User:** First-timers, non-experts, anyone seeking direction
 - **Deployment:** Streamlit Cloud
-- **Live URL:** https://qimen-pro-qfvejjsappeenzfeuretzw9.streamlit.app/
-- **Repository:** https://github.com/Espivc/qimen-pro
+- **Repository:** https://github.com/Espivc/ming-qimen
 
 ---
 
-## ✅ WHAT'S NEW IN V4.0 (Phase 4)
+## ✅ WHAT'S NEW IN V5.0 (Phase 5)
 
-### 🔮 Real QMDJ Engine
-- ✅ Created `core/qmdj_engine.py` - Complete QMDJ calculation module
-- ✅ kinqimen library integration with graceful fallback
-- ✅ Joey Yap terminology mapping (Chinese → English)
-- ✅ Strength calculations (Timely/Prosperous/Resting/Confined/Dead)
-- ✅ Component scoring system (-3 to +3)
-- ✅ Palace-based analysis
+### 🎂 Birth Date Calculator
+- ✅ Enter birth date & time → Auto-calculate Four Pillars
+- ✅ Visual Four Pillars display (年月日时)
+- ✅ Day Master extraction with strength analysis
+- ✅ Auto-determine Useful Gods based on DM strength
+- ✅ Profile type detection (Pioneer, Warrior, etc.)
 
-### 📊 9-Palace Grid
-- ✅ Visual grid in Luo Shu arrangement
-- ✅ Real-time component display per palace
-- ✅ Highlighted selected palace
-- ✅ Heaven/Earth stems, Star, Door, Deity visible
+### 🔮 BaZi Engine (`core/bazi_engine.py`)
+- ✅ Four Pillars calculation (Year/Month/Day/Hour)
+- ✅ Hidden stems extraction (藏干)
+- ✅ Ten Gods mapping (十神)
+- ✅ Day Master strength scoring
+- ✅ Useful Gods determination
+- ✅ Special structures detection (Wealth Vault, Nobleman)
 
-### 🎯 Palace Recommendations
-- ✅ `get_all_palaces_summary()` - Ranks all 9 palaces
-- ✅ Best topic recommendation on dashboard
-- ✅ Score-based sorting (1-10 scale)
-- ✅ Door + Star combination display
-
-### 📤 Universal Schema v2.0 Export
-- ✅ Full schema compliance
-- ✅ Component strength scores included
-- ✅ BaZi profile integration
-- ✅ ML tracking CSV generation
-- ✅ One-click JSON copy
-
-### 👤 BaZi Integration
-- ✅ Profile storage in session state
-- ✅ Quick preset for Geng Metal Pioneer
-- ✅ Useful gods configuration
-- ✅ Special structures (Wealth Vault, Nobleman)
+### 📊 Enhanced Settings Page
+- ✅ Tab 1: Birth Date Calculator (NEW!)
+- ✅ Tab 2: Manual Profile Entry
+- ✅ Tab 3: Preferences
+- ✅ Beautiful Four Pillars visualization
+- ✅ Ten Gods mapping display
+- ✅ Auto-save to user profile
 
 ---
 
@@ -66,133 +55,109 @@ ming-qimen/
 │   └── config.toml
 ├── assets/
 │   └── style.css
-├── core/                    ← NEW
+├── core/
 │   ├── __init__.py
-│   └── qmdj_engine.py       ← QMDJ calculation engine
+│   ├── qmdj_engine.py      ← Phase 4: QMDJ calculations
+│   └── bazi_engine.py      ← Phase 5: BaZi calculations (NEW!)
 ├── pages/
-│   ├── 1_Chart.py           ← Real QMDJ calculations
-│   ├── 2_Export.py          ← Universal Schema export
+│   ├── 1_Chart.py
+│   ├── 2_Export.py
 │   ├── 3_History.py
-│   ├── 4_Settings.py        ← BaZi profile
+│   ├── 4_Settings.py       ← Enhanced with Birth Calculator
 │   └── 5_Help.py
-├── app.py                   ← Dashboard with recommendations
+├── app.py
 ├── requirements.txt
+├── README.md
+├── LICENSE
+├── .gitignore
 └── PROJECT_STATE.md
 ```
 
 ---
 
-## 🔧 TECHNICAL FEATURES
+## 🔧 BAZI ENGINE FEATURES
 
-### QMDJ Engine (`core/qmdj_engine.py`)
+### Four Pillars Calculation
 ```python
-# Key classes
-QMDJEngine          # kinqimen wrapper with fallback
-ChartProcessor      # Raw chart → processed data
-
-# Key functions
-generate_qmdj_reading(date, palace, method)  # Single reading
-get_all_palaces_summary(date, method)        # All 9 palaces ranked
-
-# Constants
-PALACE_INFO         # Palace number → name/element/direction
-PALACE_TOPICS       # Palace number → topic/icon
-STAR_MAPPING        # Chinese → Joey Yap English
-DOOR_MAPPING        # Chinese → Joey Yap English
-DEITY_MAPPING       # Chinese → Joey Yap English
+calculate_bazi_profile(year, month, day, hour)
+# Returns:
+# - four_pillars (Year/Month/Day/Hour with stems & branches)
+# - day_master (element, polarity, strength)
+# - ten_gods (relationships to Day Master)
+# - useful_gods (favorable/unfavorable elements)
+# - special_structures (Wealth Vault, Nobleman)
+# - profile (dominant Ten God, profile type)
 ```
 
-### Strength Calculation
-```python
-def calculate_strength(component_element, palace_element):
-    # Same element → Timely (+2)
-    # Palace produces component → Prosperous (+3)
-    # Component produces palace → Resting (0)
-    # Palace controls component → Confined (-2)
-    # Component controls palace → Dead (-3)
-```
+### Ten Gods Mapping
+| Relationship | Yang | Yin |
+|--------------|------|-----|
+| Same Element | 比肩 Friend | 劫财 Rob Wealth |
+| DM Produces | 食神 Eating God | 伤官 Hurting Officer |
+| DM Controls | 偏财 Indirect Wealth | 正财 Direct Wealth |
+| Controls DM | 七杀 7 Killings | 正官 Direct Officer |
+| Produces DM | 偏印 Indirect Resource | 正印 Direct Resource |
 
-### Score Normalization
-```python
-# Component total: -12 to +12
-# Normalized: ((total + 12) / 24) * 9 + 1 → 1-10 scale
-```
-
----
-
-## 🎯 BEGINNER-FRIENDLY TERMINOLOGY
-
-### Energy Levels
-| Technical | Friendly | Advice |
-|-----------|----------|--------|
-| Timely (+2) | 🔥 High Energy | Take Action! |
-| Prosperous (+3) | ✨ Good Energy | Favorable |
-| Resting (0) | 😐 Balanced | Proceed Normally |
-| Confined (-2) | 🌙 Low Energy | Be Patient |
-| Dead (-3) | 💤 Rest Energy | Wait & Reflect |
-
-### Door Names
-| Original | Friendly |
-|----------|----------|
-| Death 死门 | Stillness |
-| Fear 惊门 | Surprise |
+### Profile Types
+| Ten God | Profile |
+|---------|---------|
+| Friend | Networker |
+| Rob Wealth | Competitor |
+| Eating God | Philosopher |
+| Hurting Officer | Artist |
+| Indirect Wealth | Pioneer |
+| Direct Wealth | Leader |
+| 7 Killings | Warrior |
+| Direct Officer | Director |
+| Indirect Resource | Strategist |
+| Direct Resource | Diplomat |
 
 ---
 
 ## 📋 DEPLOYMENT CHECKLIST
 
-### Files to Upload to GitHub:
-1. `app.py` - Main dashboard
-2. `core/__init__.py` - Module init
-3. `core/qmdj_engine.py` - QMDJ engine
-4. `pages/1_Chart.py` - Chart page
-5. `pages/2_Export.py` - Export page
-6. `pages/3_History.py` - History page
-7. `pages/4_Settings.py` - Settings page
-8. `pages/5_Help.py` - Help page
-9. `assets/style.css` - Styles
-10. `.streamlit/config.toml` - Config
-11. `requirements.txt` - Dependencies
-12. `PROJECT_STATE.md` - This file
+### Files to Update on GitHub:
+1. `core/__init__.py` - Updated with BaZi imports
+2. `core/bazi_engine.py` - NEW FILE
+3. `pages/4_Settings.py` - Enhanced with calculator
+4. `PROJECT_STATE.md` - Updated
 
 ### After Upload:
 1. Wait 2-3 minutes for Streamlit rebuild
-2. Test: Dashboard shows palace recommendations
-3. Test: Chart generates with 9-palace grid
-4. Test: Export produces Universal Schema JSON
-5. Test: BaZi profile saves in Settings
+2. Test: Go to Settings → Birth Date Calculator tab
+3. Test: Enter a birth date/time → Click Calculate
+4. Test: Verify Four Pillars display correctly
+5. Test: Check Day Master strength and Useful Gods
+6. Test: Verify profile auto-saves
 
 ---
 
-## ⚠️ KNOWN ISSUES
+## 🎯 USER FLOW (Phase 5)
 
-### kinqimen Compatibility
-- kinqimen has Python version compatibility issues (ephem library)
-- Fallback calculations work correctly
-- Real kinqimen may work on Streamlit Cloud with different Python version
-
-### To Fix Later
-- [ ] Test kinqimen on Streamlit Cloud
-- [ ] Add formation detection (Phase 5)
-- [ ] Enhanced BaZi with Four Pillars (Phase 5)
+```
+New User Journey:
+1. Open App → See Dashboard with recommendations
+2. Go to Settings → Birth Date Calculator
+3. Enter birth date & time
+4. Click "Calculate My BaZi"
+5. See Four Pillars, Day Master, Useful Gods
+6. Profile auto-saved!
+7. Go to Chart → Generate Reading
+8. Reading now personalized with BaZi profile
+9. Export → JSON includes full BaZi data
+```
 
 ---
 
 ## 🚀 FUTURE PHASES
 
-### Phase 5: Enhanced BaZi
-- Full Four Pillars calculation
-- Hidden stems extraction
-- Ten Gods mapping
-- Useful God activation percentage
-- Luck Pillar integration
-
 ### Phase 6: Advanced Features
-- Formation identification (#64/#73)
-- Multiple user profiles
-- History analytics
-- Export to calendar
-- Mobile app wrapper
+- [ ] Formation identification (#64/#73 books)
+- [ ] BaZi-QMDJ cross-reference scoring
+- [ ] Luck Pillar calculations
+- [ ] Annual influence analysis
+- [ ] Multiple user profiles
+- [ ] History analytics dashboard
 
 ---
 
@@ -201,8 +166,8 @@ def calculate_strength(component_element, palace_element):
 ### Starting New Chat:
 ```
 Continue Ming Qimen (明奇门) development.
-Check PROJECT_STATE.md in Espivc/qimen-pro.
-Current: Phase 4 complete, ready for deployment.
+Check PROJECT_STATE.md in Espivc/ming-qimen.
+Current: Phase 5 complete (BaZi Calculator).
 I want to [your request here].
 ```
 
