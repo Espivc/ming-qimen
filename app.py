@@ -1,23 +1,20 @@
 """
-Ming Qimen 明奇门 - Dashboard v3.5
-Fixed with correct page file names
+Ming Qimen 明奇门 - Main Dashboard
+Version: 4.0
+"Clarity for the People"
+
+Features:
+- Current cosmic energy display
+- Quick navigation
+- Streamlined BaZi profile in sidebar (single location)
 """
 
 import streamlit as st
-from datetime import datetime, timedelta, timezone
-import sys
-import os
+from datetime import datetime
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from core.qmdj_engine import (
-    generate_qmdj_reading,
-    get_all_palaces_summary,
-    PALACE_INFO,
-    PALACE_TOPICS,
-    get_chinese_hour
-)
-
+# ============================================================
+# PAGE CONFIG
+# ============================================================
 st.set_page_config(
     page_title="Ming Qimen 明奇门",
     page_icon="🌟",
@@ -25,264 +22,280 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-SGT = timezone(timedelta(hours=8))
-
-def get_singapore_time():
-    return datetime.now(SGT)
-
-# ============================================================================
+# ============================================================
 # CUSTOM CSS
-# ============================================================================
-
+# ============================================================
 st.markdown("""
 <style>
-    .stApp {
-        background: linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 100%);
+    /* Main title */
+    .main-title {
+        font-size: 3rem;
+        font-weight: bold;
+        background: linear-gradient(90deg, #FFD700, #FFA500);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+        margin-bottom: 0.5rem;
     }
-    h1, h2, h3 {
-        color: #FFD700 !important;
+    
+    .subtitle {
+        color: #888;
+        text-align: center;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
     }
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0d0d20 0%, #1a1a30 100%);
+    
+    /* Cards */
+    .energy-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid #FFD700;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    
+    .nav-card {
+        background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .nav-card:hover {
+        border-color: #FFD700;
+        transform: translateY(-2px);
+    }
+    
+    /* Sidebar profile */
+    .sidebar-profile {
+        background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+        border: 1px solid #2ecc71;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    .sidebar-profile-empty {
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+        border: 1px solid #555;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    /* Element badges */
+    .element-badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin: 0.1rem;
+    }
+    .wood { background: #228B22; color: white; }
+    .fire { background: #DC143C; color: white; }
+    .earth { background: #DAA520; color: black; }
+    .metal { background: #C0C0C0; color: black; }
+    .water { background: #4169E1; color: white; }
+    
+    /* Time display */
+    .time-display {
+        font-size: 1.5rem;
+        color: #FFD700;
+        font-weight: bold;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# SESSION STATE
-# ============================================================================
-
-if 'selected_palace' not in st.session_state:
-    st.session_state.selected_palace = 5
-if 'current_chart' not in st.session_state:
-    st.session_state.current_chart = None
-if 'analyses' not in st.session_state:
-    st.session_state.analyses = []
-if 'user_profile' not in st.session_state:
-    st.session_state.user_profile = {}
-if 'bazi_calculated' not in st.session_state:
-    st.session_state.bazi_calculated = None
-if 'birth_year' not in st.session_state:
-    st.session_state.birth_year = 1990
-if 'birth_month' not in st.session_state:
-    st.session_state.birth_month = 1
-if 'birth_day' not in st.session_state:
-    st.session_state.birth_day = 1
-if 'birth_hour' not in st.session_state:
-    st.session_state.birth_hour = 12
-if 'birth_minute' not in st.session_state:
-    st.session_state.birth_minute = 0
-
-# ============================================================================
-# SIDEBAR
-# ============================================================================
-
+# ============================================================
+# SIDEBAR - Single BaZi Profile Location
+# ============================================================
 with st.sidebar:
-    now = get_singapore_time()
-    ch_char, ch_pinyin, ch_animal = get_chinese_hour(now.hour)
-    
-    st.markdown(f"**{ch_char}時** ({ch_pinyin} - {ch_animal})")
-    st.markdown("---")
-    
-    st.markdown("### 📍 Navigation")
-    
-    # CORRECT PAGE NAMES matching your GitHub repo:
-    # 1_Chart.py, 2_Export.py, 3_History.py, 4_Settings.py, 5_Help.py, 6_BaZi.py
-    
-    if st.button("📊 Generate Chart", use_container_width=True):
-        st.switch_page("pages/1_Chart.py")
-    
-    if st.button("📤 Export Reading", use_container_width=True):
-        st.switch_page("pages/2_Export.py")
-    
-    if st.button("📜 History", use_container_width=True):
-        st.switch_page("pages/3_History.py")
-    
-    if st.button("⚙️ Settings", use_container_width=True):
-        st.switch_page("pages/4_Settings.py")
-    
-    if st.button("❓ Help & Guide", use_container_width=True):
-        st.switch_page("pages/5_Help.py")
+    st.markdown("## 🌟 Ming Qimen")
+    st.caption("明奇门 • Clarity for the People")
     
     st.markdown("---")
     
-    # BaZi Profile Display
-    if st.session_state.user_profile.get('day_master'):
+    # BaZi Profile Display (THE ONLY PLACE it shows)
+    st.markdown("### 👤 Your Profile")
+    
+    if st.session_state.get("user_profile"):
         profile = st.session_state.user_profile
-        st.markdown("### 👤 Your BaZi")
         
-        dm = profile.get('day_master', 'Not set')
-        element = profile.get('element', '')
-        
-        element_colors = {
-            'Wood': '#4CAF50', 'Fire': '#F44336', 
-            'Earth': '#FF9800', 'Metal': '#9E9E9E', 'Water': '#2196F3'
-        }
-        elem_color = element_colors.get(element, '#888')
-        
-        st.markdown(f"**Day Master:** <span style='color:{elem_color};font-weight:bold'>{dm}</span>", unsafe_allow_html=True)
-        st.markdown(f"**Element:** {element} ({profile.get('polarity', '')})")
-        st.markdown(f"**Strength:** {profile.get('strength', '')}")
-        
-        useful = profile.get('useful_gods', [])
-        if useful:
-            st.markdown(f"**Helpful:** ✅ {', '.join(useful)}")
-        
-        unfav = profile.get('unfavorable', [])
-        if unfav:
-            st.markdown(f"**Avoid:** ❌ {', '.join(unfav)}")
-        
-        profile_type = profile.get('profile', '')
-        if profile_type:
-            short_profile = profile_type[:25] + "..." if len(profile_type) > 25 else profile_type
-            st.markdown(f"**Type:** {short_profile}")
-        
-        if profile.get('wealth_vault'):
-            st.markdown("💰 **Wealth Vault**")
-        if profile.get('nobleman'):
-            st.markdown("👑 **Nobleman**")
-    else:
-        st.markdown("### 👤 Profile")
-        st.caption("No BaZi profile set")
-        if st.button("🎂 Calculate BaZi", use_container_width=True, key="sidebar_bazi"):
-            st.switch_page("pages/4_Settings.py")
-
-# ============================================================================
-# MAIN CONTENT
-# ============================================================================
-
-st.markdown("# 🌟 Ming Qimen 明奇门")
-st.markdown("### *Clarity for the People*")
-st.markdown("*Ancient Wisdom, Made Bright and Simple*")
-st.markdown("---")
-
-st.markdown("## ✨ Current Energy")
-
-now = get_singapore_time()
-
-with st.spinner("Reading the cosmic energy..."):
-    summaries = get_all_palaces_summary(now, method=1)
-
-if summaries:
-    best = summaries[0]
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("### ⭐ Best Topic Right Now")
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); 
-                    border: 3px solid #FFD700; border-radius: 15px; padding: 25px;">
-            <div style="font-size: 3em; text-align: center;">{best['icon']}</div>
-            <div style="font-size: 1.8em; text-align: center; color: #FFD700; font-weight: bold; margin: 10px 0;">
-                {best['topic']}
-            </div>
-            <div style="text-align: center; font-size: 1.2em; color: #90CAF9;">
-                Palace {best['palace']} ({best['name']})
-            </div>
-            <div style="text-align: center; margin-top: 15px;">
-                <span style="background: #FFD700; color: #000; padding: 8px 20px; border-radius: 20px; font-weight: bold;">
-                    Score: {best['score']}/10 - {best['verdict']}
-                </span>
-            </div>
-            <div style="text-align: center; margin-top: 15px; color: #aaa;">
-                {best['door']} Door + {best['star']} Star
-            </div>
+        <div class="sidebar-profile">
+            <strong style="color: #FFD700; font-size: 1.1rem;">{profile.get('day_master', 'Unknown')}</strong><br>
+            <span style="color: #9B59B6;">{profile.get('polarity', '')} {profile.get('element', '')}</span><br>
+            <span style="color: {'#2ecc71' if profile.get('strength') == 'Strong' else '#e74c3c' if profile.get('strength') == 'Weak' else '#f39c12'};">
+                {profile.get('strength', '')} ({profile.get('strength_score', 'N/A')}/10)
+            </span>
         </div>
         """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### 📊 Quick Stats")
-        favorable = len([s for s in summaries if s['score'] >= 6])
-        neutral = len([s for s in summaries if 4 <= s['score'] < 6])
-        challenging = len([s for s in summaries if s['score'] < 4])
         
-        st.metric("✅ Favorable Topics", f"{favorable}/9")
-        st.metric("😐 Neutral Topics", f"{neutral}/9")
-        st.metric("⚠️ Challenging Topics", f"{challenging}/9")
-        st.markdown("---")
-        st.markdown(f"**Time:** {now.strftime('%H:%M')} SGT")
-        st.markdown(f"**Chinese Hour:** {ch_char}時")
+        # Useful Gods (compact display)
+        useful = profile.get('useful_gods', [])
+        if useful:
+            st.markdown("**Useful:**")
+            badges_html = " ".join([f'<span class="element-badge {g.lower()}">{g}</span>' for g in useful])
+            st.markdown(badges_html, unsafe_allow_html=True)
+        
+        # Special structures (compact)
+        structures = []
+        if profile.get('wealth_vault'):
+            structures.append("💰 Vault")
+        if profile.get('nobleman'):
+            structures.append("👑 Noble")
+        if structures:
+            st.caption(" • ".join(structures))
+        
+        # Edit link
+        if st.button("✏️ Edit Profile", use_container_width=True, key="sidebar_edit"):
+            st.switch_page("pages/6_BaZi.py")
+    
+    else:
+        st.markdown("""
+        <div class="sidebar-profile-empty">
+            <span style="color: #888;">No BaZi profile set</span><br>
+            <span style="color: #666; font-size: 0.85rem;">Calculate your Four Pillars</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔮 Set Up BaZi", type="primary", use_container_width=True, key="sidebar_setup"):
+            st.switch_page("pages/6_BaZi.py")
     
     st.markdown("---")
     
-    # TOPIC GRID
-    st.markdown("## 🎯 All Topics Overview")
-    st.caption("Click on a topic to get detailed guidance")
+    # Quick Stats
+    st.markdown("### 📊 Quick Stats")
+    charts_generated = st.session_state.get("charts_count", 0)
+    st.metric("Charts Generated", charts_generated)
     
-    for row in range(3):
-        cols = st.columns(3)
-        for col in range(3):
-            idx = row * 3 + col
-            if idx < len(summaries):
-                s = summaries[idx]
-                
-                with cols[col]:
-                    if s['score'] >= 7:
-                        border_color = "#4CAF50"
-                    elif s['score'] >= 5:
-                        border_color = "#2196F3"
-                    elif s['score'] >= 3:
-                        border_color = "#FF9800"
-                    else:
-                        border_color = "#F44336"
-                    
-                    rank_badge = ""
-                    if idx == 0:
-                        rank_badge = "⭐ BEST"
-                    elif idx == 1:
-                        rank_badge = "🥈 2nd"
-                    elif idx == 2:
-                        rank_badge = "🥉 3rd"
-                    
-                    st.markdown(
-                        f'<div style="background: rgba(30, 30, 50, 0.8); '
-                        f'border: 2px solid {border_color}; border-radius: 12px; '
-                        f'padding: 15px; margin: 5px 0; min-height: 160px; text-align: center;">'
-                        f'<div style="text-align: right; font-size: 0.7em; color: {border_color}; height: 18px;">{rank_badge}</div>'
-                        f'<div style="font-size: 2em;">{s["icon"]}</div>'
-                        f'<div style="color: #FFD700; font-weight: bold; font-size: 1.1em;">{s["topic"]}</div>'
-                        f'<div style="color: #888; font-size: 0.8em;">Palace {s["palace"]}</div>'
-                        f'<div style="margin-top: 10px;">'
-                        f'<span style="background: {border_color}; color: #fff; padding: 3px 12px; border-radius: 15px; font-size: 0.9em;">'
-                        f'{s["score"]}/10</span></div>'
-                        f'<div style="color: #666; font-size: 0.75em; margin-top: 8px;">{s["door"]} + {s["star"]}</div>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
-                    
-                    if st.button(f"Analyze {s['topic']}", key=f"btn_{s['palace']}", use_container_width=True):
-                        st.session_state.selected_palace = s['palace']
-                        st.switch_page("pages/1_Chart.py")
+    # Current Time
+    now = datetime.now()
+    st.caption(f"🕐 {now.strftime('%H:%M')} • {now.strftime('%Y-%m-%d')}")
 
-# QUICK ACTIONS
-st.markdown("---")
-st.markdown("## 🚀 Quick Actions")
+# ============================================================
+# MAIN CONTENT
+# ============================================================
 
-action_cols = st.columns(4)
+st.markdown('<h1 class="main-title">🌟 Ming Qimen 明奇门</h1>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Qi Men Dun Jia Analysis System • 奇门遁甲分析系统</p>', unsafe_allow_html=True)
 
-with action_cols[0]:
-    if st.button("📊 Full Chart Analysis", use_container_width=True, type="primary"):
-        st.switch_page("pages/1_Chart.py")
+# Current cosmic energy card
+now = datetime.now()
+hour_str = now.strftime("%H:%M")
+date_str = now.strftime("%A, %B %d, %Y")
 
-with action_cols[1]:
-    if st.button("💼 Career Reading", use_container_width=True):
-        st.session_state.selected_palace = 1
-        st.switch_page("pages/1_Chart.py")
-
-with action_cols[2]:
-    if st.button("💰 Wealth Reading", use_container_width=True):
-        st.session_state.selected_palace = 4
-        st.switch_page("pages/1_Chart.py")
-
-with action_cols[3]:
-    if st.button("💕 Relationship Reading", use_container_width=True):
-        st.session_state.selected_palace = 2
-        st.switch_page("pages/1_Chart.py")
-
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666; font-size: 0.85em;">
-    🌟 <strong>Ming Qimen 明奇门</strong> v3.5 | <em>Clarity for the People</em>
+st.markdown(f"""
+<div class="energy-card">
+    <div style="color: #888; font-size: 1rem;">CURRENT COSMIC ENERGY</div>
+    <div class="time-display">{hour_str}</div>
+    <div style="color: #666;">{date_str}</div>
+    <div style="margin-top: 1rem; color: #FFD700;">
+        Generate a chart to see today's formation →
+    </div>
 </div>
 """, unsafe_allow_html=True)
+
+st.markdown("")
+
+# Quick navigation cards
+st.subheader("🚀 Quick Actions")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("""
+    <div class="nav-card">
+        <div style="font-size: 2rem;">📊</div>
+        <div style="color: #FFD700; font-weight: bold;">Chart</div>
+        <div style="color: #666; font-size: 0.85rem;">Generate QMDJ reading</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Open Chart →", key="nav_chart", use_container_width=True):
+        st.switch_page("pages/1_Chart.py")
+
+with col2:
+    st.markdown("""
+    <div class="nav-card">
+        <div style="font-size: 2rem;">📤</div>
+        <div style="color: #FFD700; font-weight: bold;">Export</div>
+        <div style="color: #666; font-size: 0.85rem;">Download JSON data</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Open Export →", key="nav_export", use_container_width=True):
+        st.switch_page("pages/2_Export.py")
+
+with col3:
+    st.markdown("""
+    <div class="nav-card">
+        <div style="font-size: 2rem;">🎂</div>
+        <div style="color: #FFD700; font-weight: bold;">BaZi</div>
+        <div style="color: #666; font-size: 0.85rem;">Calculate Four Pillars</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Open BaZi →", key="nav_bazi", use_container_width=True):
+        st.switch_page("pages/6_BaZi.py")
+
+st.markdown("")
+
+col4, col5, col6 = st.columns(3)
+
+with col4:
+    st.markdown("""
+    <div class="nav-card">
+        <div style="font-size: 2rem;">📜</div>
+        <div style="color: #FFD700; font-weight: bold;">History</div>
+        <div style="color: #666; font-size: 0.85rem;">Past readings</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Open History →", key="nav_history", use_container_width=True):
+        st.switch_page("pages/3_History.py")
+
+with col5:
+    st.markdown("""
+    <div class="nav-card">
+        <div style="font-size: 2rem;">⚙️</div>
+        <div style="color: #FFD700; font-weight: bold;">Settings</div>
+        <div style="color: #666; font-size: 0.85rem;">Configure app</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Open Settings →", key="nav_settings", use_container_width=True):
+        st.switch_page("pages/4_Settings.py")
+
+with col6:
+    st.markdown("""
+    <div class="nav-card">
+        <div style="font-size: 2rem;">❓</div>
+        <div style="color: #FFD700; font-weight: bold;">Help</div>
+        <div style="color: #666; font-size: 0.85rem;">Learn QMDJ</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Open Help →", key="nav_help", use_container_width=True):
+        st.switch_page("pages/5_Help.py")
+
+# ============================================================
+# INFO SECTION
+# ============================================================
+st.markdown("---")
+
+with st.expander("ℹ️ About Ming Qimen"):
+    st.markdown("""
+    **Ming Qimen 明奇门** is a professional Qi Men Dun Jia analysis system designed for:
+    
+    - 📊 **Accurate QMDJ Charts** - Using Chai Bu (拆補) method via kinqimen library
+    - 🎂 **BaZi Integration** - Four Pillars calculation and cross-reference
+    - 📤 **Data Export** - Universal Schema v2.0 JSON for AI analysis
+    - 📱 **Mobile Friendly** - Works on desktop and iPhone
+    
+    **Developer Engine (Project 2)** - Generates structured data for the Analyst Engine (Project 1)
+    
+    *Version 4.0 • Built with Streamlit*
+    """)
+
+# Footer
+st.caption("🌟 Ming Qimen 明奇门 | Developer Engine v4.0 | Universal Schema v2.0")
