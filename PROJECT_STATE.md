@@ -1,6 +1,6 @@
 # Ming Qimen 明奇门 - Project State
 
-## Version: 3.1 (Phase 5 UI Fixes Complete)
+## Version: 4.0 (UX Streamlined)
 **Last Updated:** 2024-12-30
 
 ---
@@ -9,61 +9,36 @@
 
 Ming Qimen is a Streamlit-based QMDJ (Qi Men Dun Jia) chart generator and analyzer with full BaZi (Four Pillars) integration. It serves as the **Developer Engine (Project 2)** that generates rich data for analysis by the **Analyst Engine (Project 1)**.
 
-**Live URL:** https://ming-qimen.streamlit.app (or current Streamlit deployment)
+**Live URL:** Streamlit Cloud deployment
 **Repository:** https://github.com/Espivc/ming-qimen
 
 ---
 
-## ✅ COMPLETED FEATURES (v3.1)
+## ✅ COMPLETED FEATURES (v4.0)
 
-### Phase 1-4: QMDJ Core (Previously Complete)
-- [x] Hour/Day chart generation
+### Core Features
+- [x] QMDJ Hour/Day chart generation
 - [x] 9-Palace grid visualization
 - [x] Component display (Stems, Doors, Stars, Deities)
 - [x] Strength calculation in palace
 - [x] JSON export (Universal Schema v2.0)
 - [x] Dark theme with gold accents
-- [x] Mobile-friendly layout
 
-### Phase 5: BaZi Integration (100% Complete)
-- [x] **BaZi Calculator Core Engine** (`core/bazi_engine.py`)
-  - Four Pillars calculation from birth date/time
-  - Hidden stems extraction for all branches
-  - Complete Ten Gods mapping (all 10 stems)
-  - Day Master strength assessment
-  - Useful Gods recommendation with reasoning
-  - Special structures detection (Wealth Vault, Nobleman)
-  - Profile type detection (Pioneer, Warrior, Philosopher, etc.)
+### BaZi Integration (Phase 5)
+- [x] Four Pillars calculation from birth date/time
+- [x] Hidden stems extraction
+- [x] Ten Gods mapping (all 10 stems)
+- [x] Day Master strength assessment
+- [x] Useful Gods recommendation
+- [x] Special structures detection (Wealth Vault, Nobleman)
 
-- [x] **BaZi Calculator Page** (`pages/4_Settings.py` - Birth Date Calculator tab)
-  - Birth date input (date picker)
-  - Birth time input (exact hour/minute - number inputs)
-  - Visual Four Pillars display with color-coded elements
-  - Hidden stems shown under each branch
-  - Strength score visualization
-  - Ten Gods mapping grid with favorable/unfavorable indicators
-  - Special structures detection display
-  - Auto-save to session state
-
-- [x] **Enhanced Dashboard** (`app.py`)
-  - BaZi profile summary in sidebar
-  - Shows: Day Master, Element, Strength, Useful Gods, Profile Type
-  - Special structures indicators (💰 Wealth Vault, 👑 Nobleman)
-  - Fixed HTML rendering in topic cards
-
-- [x] **Enhanced Export** (`pages/2_Export.py`)
-  - Universal Schema v2.1 compliance
-  - Full Four Pillars in JSON
-  - Complete Ten Gods mapping
-  - Useful God activation data
-  - BaZi alignment score
-  - Combined QMDJ + BaZi verdict score
-
-### Phase 5.1: UI Fixes (Just Completed)
-- [x] Fixed raw HTML showing in topic grid cards
-- [x] Changed birth time input from 15-min intervals to exact minute
-- [x] Enhanced BaZi profile display in sidebar
-- [x] App title properly set to "Ming Qimen 明奇门"
+### v4.0 UX Improvements (Just Completed)
+- [x] **NEW:** Minute input for precise birth time
+- [x] **NEW:** "Unknown birth time" skip option
+- [x] **FIX:** Settings page now displays BaZi profile correctly
+- [x] **FIX:** Consolidated BaZi profile to SIDEBAR ONLY
+- [x] **REMOVED:** Duplicate BaZi displays from Settings, Export tabs
+- [x] **IMPROVED:** Cleaner navigation flow
 
 ---
 
@@ -72,176 +47,179 @@ Ming Qimen is a Streamlit-based QMDJ (Qi Men Dun Jia) chart generator and analyz
 ```
 ming-qimen/
 ├── .streamlit/
-│   └── config.toml              # Dark theme configuration
-├── assets/
-│   └── style.css                # Custom styling
+│   └── config.toml
 ├── core/
-│   ├── __init__.py              # Module exports
-│   ├── qmdj_engine.py           # QMDJ calculations
-│   └── bazi_engine.py           # BaZi calculations (Phase 5)
+│   ├── __init__.py
+│   ├── qmdj_engine.py
+│   └── bazi_calculator_core.py (optional)
 ├── pages/
-│   ├── 1_Chart.py               # QMDJ chart generator
-│   ├── 2_Export.py              # JSON export
-│   ├── 3_History.py             # Reading history
-│   ├── 4_Settings.py            # BaZi calculator + preferences
-│   └── 5_Help.py                # Help & guide
-├── .gitignore
-├── LICENSE
-├── PROJECT_STATE.md             # This file
+│   ├── 1_Chart.py
+│   ├── 2_Export.py          ← Streamlined v4.0
+│   ├── 3_History.py
+│   ├── 4_Settings.py        ← Streamlined v4.0
+│   ├── 5_Help.py
+│   └── 6_BaZi.py            ← Enhanced v4.0 (minute, unknown time)
+├── app.py                    ← Streamlined v4.0
+├── requirements.txt
 ├── README.md
-├── app.py                       # Main dashboard
-└── requirements.txt
+└── PROJECT_STATE.md
 ```
 
 ---
 
-## 📊 DATA SCHEMA: Universal Schema v2.1
+## 🔧 KEY SESSION STATE VARIABLES
 
-### BaZi Data Structure:
-```json
-{
-  "bazi_data": {
-    "chart_source": "Birth Date Calculator",
-    "birth_data": {
-      "year": 1985,
-      "month": 8,
-      "day": 15,
-      "hour": 14
-    },
-    "day_master": {
-      "chinese": "庚",
-      "pinyin": "Geng",
-      "element": "Metal",
-      "polarity": "Yang",
-      "strength": "Weak",
-      "strength_score": 4
-    },
-    "four_pillars": {
-      "year": {"stem": {...}, "branch": {...}, "hidden_stems": [...]},
-      "month": {...},
-      "day": {...},
-      "hour": {...}
-    },
-    "ten_gods_mapping": {
-      "Wood": "偏财",
-      "Fire": "七杀",
-      "Earth": "偏印",
-      "Metal": "比肩",
-      "Water": "食神"
-    },
-    "useful_gods": {
-      "primary": "Earth",
-      "secondary": "Metal",
-      "favorable": ["Earth", "Metal"],
-      "unfavorable": ["Fire"],
-      "reasoning": "Weak Metal needs Earth (Resource) and Metal (Companion) support"
-    },
-    "special_structures": {
-      "wealth_vault": true,
-      "wealth_vault_location": "Day Pillar (戌)",
-      "nobleman_present": false
-    },
-    "profile": {
-      "dominant_god": "Indirect Wealth",
-      "type": "Pioneer"
-    }
-  }
+```python
+# User BaZi Profile (SINGLE SOURCE OF TRUTH)
+st.session_state.user_profile = {
+    'day_master': 'Geng 庚',
+    'element': 'Metal',
+    'polarity': 'Yang',
+    'strength': 'Weak',
+    'strength_score': 4,
+    'useful_gods': ['Earth', 'Metal'],
+    'unfavorable': ['Fire'],
+    'wealth_vault': True,
+    'nobleman': False,
+    'birth_date': '1988-01-06',
+    'birth_time': '12:30',        # Now includes minutes
+    'unknown_time': False         # NEW: skip hour pillar flag
 }
+
+# BaZi calculation state
+st.session_state.bazi_calculated = True/False
+st.session_state.pillars = {...}  # Four Pillars data
+st.session_state.bazi_result = {...}  # Pre-save calculation
+
+# QMDJ state
+st.session_state.current_chart = {...}
+st.session_state.selected_palace = 1-9
 ```
 
 ---
 
-## 🔄 WORKFLOW: Project 2 → Project 1
+## 📋 PAGE FILE NAMES (IMPORTANT!)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    PROJECT 2 (Ming Qimen)                   │
-│                    Developer Engine                         │
-├─────────────────────────────────────────────────────────────┤
-│  1. Calculate BaZi Profile (Settings → Birth Date Calculator)│
-│  2. Generate QMDJ Chart (Chart page)                        │
-│  3. Export Universal Schema v2.1 JSON (Export page)         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼ Copy JSON
-┌─────────────────────────────────────────────────────────────┐
-│                    PROJECT 1 (Claude)                       │
-│                    Analyst Engine                           │
-├─────────────────────────────────────────────────────────────┤
-│  1. Paste JSON data                                        │
-│  2. Say: "Analyze and output as bilingual docx report"     │
-│  3. Receive: Formation ID, Strategic Actions, Synthesis    │
-└─────────────────────────────────────────────────────────────┘
+The pages folder uses **numbered prefixes**:
+
+| File Name | Sidebar Shows |
+|-----------|---------------|
+| `1_Chart.py` | Chart |
+| `2_Export.py` | Export |
+| `3_History.py` | History |
+| `4_Settings.py` | Settings |
+| `5_Help.py` | Help |
+| `6_BaZi.py` | BaZi |
+
+**Navigation code must use:**
+```python
+st.switch_page("pages/1_Chart.py")  # Correct ✅
+st.switch_page("pages/Chart.py")    # Wrong ❌
 ```
 
 ---
 
-## 🎯 USER JOURNEY (v3.1)
+## 🐛 BUGS FIXED IN v4.0
+
+| Bug | Cause | Fix |
+|-----|-------|-----|
+| Settings page not showing profile | Was looking for wrong fields | Now reads `user_profile` correctly |
+| BaZi in too many places | UX clutter | Consolidated to sidebar ONLY |
+| No minute selection | Missing feature | Added minute dropdown |
+| Unknown birth time forces error | No skip option | Added "I don't know" checkbox |
+| Export BaZi tab empty | Complex tab structure | Removed tab, inline status |
+
+---
+
+## 🎯 USER FLOW (v4.0)
 
 ```
-New User:
-1. Open Ming Qimen → See Dashboard with current energy
-2. Go to Settings → Birth Date Calculator tab
-3. Enter birth date & exact time (hour + minute)
-4. Click "Calculate My BaZi"
-5. See Four Pillars, Day Master, Strength, Useful Gods
-6. Profile auto-saved (visible in sidebar!)
-7. Go to Chart → Generate QMDJ reading
-8. See personalized guidance based on BaZi profile
-9. Go to Export → Download JSON for Project 1 analysis
+1. Open App → Dashboard with sidebar profile
+2. If no profile → Sidebar shows "Set Up BaZi" button
+3. Go to BaZi page (6_BaZi.py)
+   a. Enter birth date
+   b. Enter hour + minute OR check "unknown time"
+   c. Click "Calculate BaZi"
+   d. Review results
+   e. Click "Save to Profile"
+4. ✅ Profile now visible in sidebar (everywhere!)
+5. Go to Chart → Generate QMDJ reading
+6. Go to Export → JSON includes BaZi data automatically
 ```
+
+---
+
+## 🏠 WHERE BAZI PROFILE SHOWS (v4.0)
+
+**ONLY in sidebar** - appears on ALL pages once saved:
+- app.py sidebar ✅
+- 1_Chart.py sidebar ✅
+- 2_Export.py sidebar ✅
+- 3_History.py sidebar ✅
+- 4_Settings.py sidebar ✅
+- 5_Help.py sidebar ✅
+- 6_BaZi.py sidebar ✅
+
+**REMOVED from:**
+- Settings BaZi Profile tab (now just links to calculator)
+- Export BaZi Profile tab (removed entire tab)
+- Export page main content
 
 ---
 
 ## 📝 PENDING / FUTURE ENHANCEMENTS
 
 ### Phase 6: Advanced Features (Planned)
-- [ ] Solar Terms (节气) for accurate month pillar boundary
-- [ ] Ten Thousand Year Calendar lookup for precise day pillar
+- [ ] Solar Terms (节气) for accurate month pillar
+- [ ] Formation identification (#64/#73 books)
+- [ ] BaZi-QMDJ cross-reference scoring
 - [ ] Luck Pillars (大运) calculation
 - [ ] Annual Pillars (流年) overlay
-- [ ] Formation identification (#64/#73 books)
-- [ ] Chart comparison tool
 
-### Phase 7: ML Integration (Planned)
-- [ ] Outcome tracking database
-- [ ] Pattern recognition from history
-- [ ] Accuracy scoring
-- [ ] Automated insights generation
+### Known Limitations
+- Month pillar uses simplified solar term dates (±1-2 days)
+- BaZi calculator is simplified (production should use Ten Thousand Year Calendar)
+- Session state resets on browser refresh (Streamlit limitation)
 
 ---
 
-## 🔧 TECHNICAL NOTES
+## 🧭 CONTINUITY INSTRUCTIONS
 
-### Requirements:
+### Starting New Chat:
 ```
-streamlit>=1.28.0
-kinqimen>=0.0.6  # With fallback if unavailable
-sxtwl>=2.0.0    # With fallback if unavailable
+Continue Ming Qimen (明奇门) development.
+Repository: https://github.com/Espivc/ming-qimen
+Current: v4.0 - UX streamlined, minute input added.
+Check PROJECT_STATE.md for details.
+
+Key info:
+- Page files are numbered: 1_Chart.py, 2_Export.py, etc.
+- BaZi saves to st.session_state.user_profile
+- BaZi profile displays ONLY in sidebar (all pages)
+- User: Ben (Geng Metal, Weak, Pioneer, Wealth Vault)
+
+I want to [your request here].
 ```
 
-### BaZi Calculator: 
-- Pure Python implementation (no external dependencies)
-- Fallback calculations when kinqimen unavailable
-- Simplified solar term boundaries (approximation)
-
-### Known Limitations:
-- Month pillar uses simplified solar term dates (±1-2 days from actual)
-- kinqimen library may have Python version compatibility issues
-- Fallback QMDJ calculations are simplified
+### Key Memory Points:
+- Project 2 = Ming Qimen (Developer Engine)
+- Project 1 = Claude Analyst (receives JSON)
+- Session state key: `user_profile` (not `user_bazi_profile`)
+- BaZi profile: SIDEBAR ONLY (consolidated in v4.0)
+- Page names have number prefixes
 
 ---
 
-## 📋 TRIGGER PHRASES FOR PROJECT 1
+## 👤 USER PROFILE (Ben)
 
-When using the JSON export in Project 1, these phrases activate specific outputs:
-
-| Phrase | Output |
-|--------|--------|
-| "Analyze and output as bilingual docx report" | Full 8-section formatted document |
-| "Quick verdict" | Executive summary only |
-| "Strategic actions" | 3 recommended actions with timing |
-| "BaZi synthesis" | Focus on BaZi-QMDJ alignment analysis |
+```
+Day Master: Geng 庚 (Yang Metal)
+Strength: Weak
+Profile: Pioneer (Indirect Wealth)
+Useful Gods: Earth, Metal
+Unfavorable: Fire
+Special: Wealth Vault present
+```
 
 ---
 
@@ -251,35 +229,10 @@ When using the JSON export in Project 1, these phrases activate specific outputs
 |---------|------|---------|
 | 1.0 | 2024-12 | Initial QMDJ chart generator |
 | 2.0 | 2024-12 | Added export, history, settings |
-| 3.0 | 2024-12-30 | Full BaZi integration - Calculator, Ten Gods, Alignment Score |
-| **3.1** | **2024-12-30** | **UI Fixes** - Exact time input, HTML rendering fix, enhanced sidebar |
+| 3.0 | 2024-12-30 | Full BaZi integration |
+| 3.5 | 2024-12-30 | Session state fix, page navigation fix |
+| **4.0** | **2024-12-30** | **UX streamlined: minute input, unknown time option, sidebar-only profile, removed duplicates** |
 
 ---
 
-## 🧭 CONTINUITY INSTRUCTIONS
-
-### Starting New Chat:
-```
-Continue Ming Qimen (明奇门) development.
-Check PROJECT_STATE.md in Espivc/ming-qimen repo.
-Current: v3.1 - Phase 5 complete with UI fixes.
-I want to [your request here].
-```
-
-### Key Memory Points:
-- Project 2 = Ming Qimen (Developer Engine)
-- Project 1 = Claude Analyst (receives JSON)
-- BaZi calculator: Birth Date → Four Pillars → Day Master → Useful Gods
-- Universal Schema v2.1 for data exchange
-
----
-
-## 📞 CROSS-PROJECT REFERENCES
-
-- **Project 1 System Prompt:** QI MEN + BAZI STRATEGIC INTELLIGENCE ENGINE v2.0
-- **Universal Schema:** v2.1 (QMDJ + BaZi integrated)
-- **User Profile:** Weak Geng Metal, Pioneer (Indirect Wealth), Wealth Vault
-
----
-
-*Ming Qimen 明奇门 - "Clarity for the People" - Illuminating the Hidden Doors*
+*Ming Qimen 明奇门 - "Clarity for the People"*
