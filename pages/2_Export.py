@@ -1,321 +1,275 @@
 """
-Enhanced Export Page - Universal Schema v2.1
-=============================================
-Ming Qimen 明奇门 v3.0 - Page 2
-
-Features:
-- Full Four Pillars in JSON export
-- Complete Ten Gods mapping
-- Special structures detection
-- Useful God activation percentages
-- Auto-calculated BaZi alignment score
-- QMDJ + BaZi integrated export
+Ming Qimen - Export Center
+Version: 4.0
+Universal Schema v2.0 - Full BaZi Integration
+Streamlined: BaZi profile shown only in sidebar
 """
 
 import streamlit as st
-from datetime import datetime, timezone, timedelta
 import json
-from typing import Dict, List
-import sys
-import os
+from datetime import datetime
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+st.set_page_config(page_title="Export Center", page_icon="📤", layout="wide")
 
-# Try to import from core module
-try:
-    from core.bazi_calculator_core import (
-        calculate_bazi_alignment_score,
-        ELEMENT_PRODUCES, ELEMENT_PRODUCED_BY, ELEMENT_CONTROLLED_BY
-    )
-    CORE_IMPORTED = True
-except ImportError:
-    CORE_IMPORTED = False
-    # Fallback: define inline
-    ELEMENT_PRODUCES = {"Wood": "Fire", "Fire": "Earth", "Earth": "Metal", "Metal": "Water", "Water": "Wood"}
-    ELEMENT_PRODUCED_BY = {"Wood": "Water", "Fire": "Wood", "Earth": "Fire", "Metal": "Earth", "Water": "Metal"}
-    ELEMENT_CONTROLLED_BY = {"Wood": "Metal", "Fire": "Water", "Earth": "Wood", "Metal": "Fire", "Water": "Earth"}
-
-# Page config
-st.set_page_config(page_title="Export | 导出", page_icon="📤", layout="wide")
-
-# Singapore timezone
-SGT = timezone(timedelta(hours=8))
-
-def calculate_bazi_alignment_score(bazi_data: Dict, qmdj_components: Dict) -> Dict:
-    """Calculate BaZi alignment score based on QMDJ components"""
-    score = 5.0
-    breakdown = []
-    
-    useful_gods = bazi_data.get("useful_gods", {})
-    primary_ug = useful_gods.get("primary", "")
-    secondary_ug = useful_gods.get("secondary", "")
-    unfavorable = useful_gods.get("unfavorable", [])
-    if isinstance(unfavorable, str):
-        unfavorable = [unfavorable]
-    
-    weights = {"heaven_stem": 1.5, "earth_stem": 1.0, "door": 1.5, "star": 1.0, "deity": 0.5}
-    
-    for component, element in qmdj_components.items():
-        if not element:
-            continue
-        weight = weights.get(component, 1.0)
-        
-        if element == primary_ug:
-            score += weight
-            breakdown.append({"component": component, "element": element, "status": "Primary UG", "modifier": f"+{weight}"})
-        elif element == secondary_ug:
-            score += weight * 0.7
-            breakdown.append({"component": component, "element": element, "status": "Secondary UG", "modifier": f"+{round(weight*0.7,1)}"})
-        elif element in unfavorable:
-            score -= weight
-            breakdown.append({"component": component, "element": element, "status": "Unfavorable", "modifier": f"-{weight}"})
-        else:
-            breakdown.append({"component": component, "element": element, "status": "Neutral", "modifier": "0"})
-    
-    special = bazi_data.get("special_structures", {})
-    if special.get("wealth_vault"):
-        score += 0.5
-        breakdown.append({"component": "wealth_vault", "element": "-", "status": "Bonus", "modifier": "+0.5"})
-    if special.get("nobleman_present"):
-        score += 0.5
-        breakdown.append({"component": "nobleman", "element": "-", "status": "Bonus", "modifier": "+0.5"})
-    
-    final_score = round(max(0, min(10, score)), 1)
-    
-    if final_score >= 8: verdict = "Excellent Alignment"
-    elif final_score >= 6: verdict = "Good Alignment"
-    elif final_score >= 4: verdict = "Mixed Alignment"
-    elif final_score >= 2: verdict = "Poor Alignment"
-    else: verdict = "Conflicting Alignment"
-    
-    return {"base_score": 5.0, "final_score": final_score, "verdict": verdict, "breakdown": breakdown}
-
-def get_strength_score(strength: str) -> int:
-    return {"Timely": 2, "Prosperous": 3, "Resting": 0, "Confined": -2, "Dead": -3}.get(strength, 0)
-
-def get_verdict(score: float) -> str:
-    if score >= 8: return "Highly Auspicious"
-    elif score >= 6: return "Auspicious"
-    elif score >= 4: return "Neutral"
-    elif score >= 2: return "Challenging"
-    else: return "Very Challenging"
-
-def convert_to_universal_schema_v2(chart_data: Dict, bazi_data: Dict = None) -> Dict:
-    """Convert to Universal Schema v2.0 with full BaZi integration"""
-    now = datetime.now(SGT)
-    
-    components = chart_data.get("components", {})
-    palace = chart_data.get("palace", {})
-    metadata = chart_data.get("metadata", {})
-    
-    heaven_stem = components.get("heaven_stem", {})
-    earth_stem = components.get("earth_stem", {})
-    door = components.get("door", {})
-    star = components.get("star", {})
-    deity = components.get("deity", {})
-    
-    qmdj_elements = {
-        "heaven_stem": heaven_stem.get("element", ""),
-        "earth_stem": earth_stem.get("element", ""),
-        "door": door.get("element", ""),
-        "star": star.get("element", ""),
-        "deity": deity.get("element", "Earth")
+# Custom CSS
+st.markdown("""
+<style>
+    .export-title { color: #FFD700; font-size: 2.5rem; font-weight: bold; }
+    .schema-badge {
+        background: linear-gradient(90deg, #9B59B6, #3498DB);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        display: inline-block;
+        margin-bottom: 1rem;
     }
+    .json-preview {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.85rem;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    .export-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    .element-badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin: 0.1rem;
+    }
+    .wood { background: #228B22; color: white; }
+    .fire { background: #DC143C; color: white; }
+    .earth { background: #DAA520; color: black; }
+    .metal { background: #C0C0C0; color: black; }
+    .water { background: #4169E1; color: white; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<p class="export-title">📤 Export Center | 导出中心</p>', unsafe_allow_html=True)
+st.markdown('<span class="schema-badge">Universal Schema v2.0 - Full BaZi Integration</span>', unsafe_allow_html=True)
+
+st.divider()
+
+# ============================================================
+# MAIN CONTENT - TABS
+# ============================================================
+
+tab1, tab2 = st.tabs(["📊 Current Reading", "❓ How to Use"])
+
+with tab1:
+    # Check if we have a current chart
+    current_chart = st.session_state.get("current_chart")
+    user_profile = st.session_state.get("user_profile")
     
-    component_total = sum([
-        get_strength_score(heaven_stem.get("strength_in_palace", "")),
-        get_strength_score(earth_stem.get("strength_in_palace", "")),
-        get_strength_score(door.get("strength_in_palace", "")),
-        get_strength_score(star.get("strength_in_palace", ""))
-    ])
-    
-    qmdj_score = round(max(0, min(10, (component_total + 12) / 2.4)), 1)
-    
-    bazi_alignment = None
-    if bazi_data and bazi_data.get("useful_gods"):
-        bazi_alignment = calculate_bazi_alignment_score(bazi_data, qmdj_elements)
-    
-    bazi_score = bazi_alignment.get("final_score", 5) if bazi_alignment else 5
-    
-    return {
-        "schema_version": "2.0",
-        "schema_name": "QMDJ_BaZi_Integrated_Data_Schema",
-        "metadata": {
-            "date_time": metadata.get("date", now.strftime("%Y-%m-%d")) + " " + metadata.get("time", now.strftime("%H:%M")),
-            "timezone": "SGT (UTC+8)",
-            "method": metadata.get("method", "拆補"),
-            "purpose": metadata.get("purpose", "Self"),
-            "analysis_type": "QMDJ_BAZI_INTEGRATED" if bazi_data else "QMDJ_ONLY",
-            "generated_by": "Ming Qimen 明奇门 v2.0",
-            "chinese_hour": metadata.get("chinese_hour", "")
-        },
-        "qmdj_data": {
-            "chart_type": chart_data.get("chart_type", "Hour"),
-            "structure": chart_data.get("structure", ""),
-            "ju_number": chart_data.get("ju_number", 0),
-            "palace_analyzed": {
-                "name": palace.get("name", ""),
-                "number": palace.get("number", 5),
-                "direction": palace.get("direction", ""),
-                "palace_element": palace.get("element", ""),
-                "topic": palace.get("topic", "Self")
+    if current_chart:
+        st.success("✅ Chart data available for export")
+        
+        # Build full export data
+        export_data = {
+            "schema_version": "2.0",
+            "schema_name": "QMDJ_BaZi_Integrated_Data_Schema",
+            "metadata": {
+                "date_time": current_chart.get("datetime", datetime.now().strftime("%Y-%m-%d %H:%M")),
+                "timezone": "UTC+8",
+                "method": "Chai Bu",
+                "purpose": current_chart.get("purpose", "Forecasting"),
+                "analysis_type": "QMDJ_BAZI_INTEGRATED" if user_profile else "QMDJ_ONLY",
+                "exported_at": datetime.now().isoformat()
             },
-            "components": {
-                "heaven_stem": {
-                    "character": heaven_stem.get("character", ""),
-                    "element": heaven_stem.get("element", ""),
-                    "polarity": heaven_stem.get("polarity", ""),
-                    "strength_in_palace": heaven_stem.get("strength_in_palace", ""),
-                    "strength_score": get_strength_score(heaven_stem.get("strength_in_palace", ""))
+            "qmdj_data": current_chart.get("qmdj_data", {}),
+        }
+        
+        # Add BaZi data if profile exists
+        if user_profile:
+            export_data["bazi_data"] = {
+                "chart_source": "User Profile",
+                "day_master": {
+                    "stem": user_profile.get("day_master", ""),
+                    "element": user_profile.get("element", ""),
+                    "polarity": user_profile.get("polarity", ""),
+                    "strength": user_profile.get("strength", ""),
+                    "strength_score": user_profile.get("strength_score", 5)
                 },
-                "earth_stem": {
-                    "character": earth_stem.get("character", ""),
-                    "element": earth_stem.get("element", ""),
-                    "polarity": earth_stem.get("polarity", ""),
-                    "strength_in_palace": earth_stem.get("strength_in_palace", ""),
-                    "strength_score": get_strength_score(earth_stem.get("strength_in_palace", ""))
+                "useful_gods": {
+                    "primary": user_profile.get("useful_gods", [""])[0] if user_profile.get("useful_gods") else "",
+                    "secondary": user_profile.get("useful_gods", ["", ""])[1] if len(user_profile.get("useful_gods", [])) > 1 else ""
                 },
-                "door": {
-                    "name": door.get("name", ""),
-                    "chinese": door.get("chinese", ""),
-                    "element": door.get("element", ""),
-                    "category": door.get("category", ""),
-                    "strength_in_palace": door.get("strength_in_palace", ""),
-                    "strength_score": get_strength_score(door.get("strength_in_palace", ""))
+                "unfavorable_elements": {
+                    "primary": user_profile.get("unfavorable", [""])[0] if user_profile.get("unfavorable") else ""
                 },
-                "star": {
-                    "name": star.get("name", ""),
-                    "chinese": star.get("chinese", ""),
-                    "element": star.get("element", ""),
-                    "category": star.get("category", ""),
-                    "strength_in_palace": star.get("strength_in_palace", ""),
-                    "strength_score": get_strength_score(star.get("strength_in_palace", ""))
-                },
-                "deity": {
-                    "name": deity.get("name", ""),
-                    "chinese": deity.get("chinese", ""),
-                    "nature": deity.get("nature", ""),
-                    "function": deity.get("function", "")
+                "special_structures": {
+                    "wealth_vault": user_profile.get("wealth_vault", False),
+                    "nobleman_present": user_profile.get("nobleman", False)
                 }
-            },
-            "formation": {
-                "primary_formation": {
-                    "name": chart_data.get("formation", {}).get("name", "Not Identified"),
-                    "category": chart_data.get("formation", {}).get("category", "Unknown"),
-                    "source_book": "",
-                    "outcome_pattern": ""
-                },
-                "secondary_formations": []
             }
-        },
-        "bazi_data": {
-            "chart_source": bazi_data.get("chart_source", "User Profile") if bazi_data else "Not Provided",
-            "day_master": bazi_data.get("day_master", {}) if bazi_data else {},
-            "four_pillars": bazi_data.get("four_pillars", "Not calculated") if bazi_data else "Not calculated",
-            "ten_gods_mapping": bazi_data.get("ten_gods_mapping", {}) if bazi_data else {},
-            "useful_gods": bazi_data.get("useful_gods", {"primary": "", "secondary": "", "unfavorable": [], "reasoning": ""}) if bazi_data else {},
-            "useful_god_activation": bazi_data.get("useful_god_activation", {}) if bazi_data else {},
-            "ten_god_profile": bazi_data.get("ten_god_profile", {"dominant_god": "", "profile_name": "", "behavioral_traits": []}) if bazi_data else {},
-            "special_structures": bazi_data.get("special_structures", {"wealth_vault": False, "nobleman_present": False}) if bazi_data else {}
-        },
-        "synthesis": {
-            "qmdj_score": {"component_total": component_total, "formation_modifier": 0, "final_qmdj_score": qmdj_score},
-            "bazi_alignment_score": {
-                "useful_god_activation": bazi_score,
-                "final_bazi_score": bazi_score,
-                "breakdown": bazi_alignment.get("breakdown", []) if bazi_alignment else [],
-                "reasoning": bazi_alignment.get("verdict", "") if bazi_alignment else ""
-            },
-            "combined_verdict_score": round((qmdj_score + bazi_score) / 2, 1),
-            "verdict": get_verdict(qmdj_score),
-            "confidence": "HIGH" if abs(qmdj_score - 5) > 2 else "MEDIUM",
-            "primary_action": f"Based on {door.get('name', 'Unknown')} Door analysis.",
-            "summary": f"Chart analysis complete. QMDJ: {qmdj_score}/10, BaZi: {bazi_score}/10"
-        },
-        "tracking": {
-            "generated_at": now.isoformat(),
+        else:
+            export_data["bazi_data"] = None
+        
+        # Synthesis placeholder
+        export_data["synthesis"] = {
+            "qmdj_score": current_chart.get("qmdj_score", 5),
+            "bazi_alignment_score": current_chart.get("bazi_score", 5) if user_profile else None,
+            "combined_verdict_score": current_chart.get("combined_score", 5),
+            "verdict": current_chart.get("verdict", "NEUTRAL"),
+            "confidence": "MEDIUM",
+            "primary_action": current_chart.get("recommendation", "Assess situation before acting")
+        }
+        
+        # Tracking
+        export_data["tracking"] = {
+            "db_row": f"{export_data['metadata']['date_time']},{current_chart.get('palace_number', 5)},{current_chart.get('formation', 'Unknown')},{export_data['synthesis']['qmdj_score']},{export_data['synthesis'].get('bazi_alignment_score', 'N/A')},{export_data['synthesis']['verdict']},PENDING",
             "outcome_status": "PENDING",
             "outcome_notes": "",
             "feedback_date": ""
         }
-    }
-
-# ============= MAIN UI =============
-st.title("📤 Export Center | 导出中心")
-st.markdown("**Universal Schema v2.0 - Full BaZi Integration**")
-st.markdown("---")
-
-chart_data = st.session_state.get("current_chart", {})
-bazi_data = st.session_state.get("bazi_data", {}) or st.session_state.get("user_bazi_profile", {})
-
-tab1, tab2, tab3 = st.tabs(["📊 Current Reading", "🎴 BaZi Profile", "❓ How to Use"])
-
-with tab1:
-    if not chart_data:
-        st.warning("⚠️ No QMDJ chart data. Generate a chart first.")
-    else:
-        universal_data = convert_to_universal_schema_v2(chart_data, bazi_data)
         
+        # Preview
+        st.subheader("📋 Export Preview")
+        
+        json_str = json.dumps(export_data, indent=2, ensure_ascii=False)
+        st.markdown(f'<div class="json-preview"><pre>{json_str}</pre></div>', unsafe_allow_html=True)
+        
+        # Export buttons
+        st.markdown("")
         col1, col2, col3 = st.columns(3)
-        with col1:
-            score = universal_data["synthesis"]["combined_verdict_score"]
-            color = "🟢" if score >= 6 else ("🟡" if score >= 4 else "🔴")
-            st.metric("Combined Score", f"{color} {score}/10")
-        with col2:
-            st.metric("QMDJ Score", f"{universal_data['synthesis']['qmdj_score']['final_qmdj_score']}/10")
-        with col3:
-            st.metric("BaZi Alignment", f"{universal_data['synthesis']['bazi_alignment_score']['final_bazi_score']}/10")
         
-        if bazi_data and universal_data["synthesis"]["bazi_alignment_score"]["breakdown"]:
-            with st.expander("📊 Alignment Breakdown"):
-                for item in universal_data["synthesis"]["bazi_alignment_score"]["breakdown"]:
-                    status = item.get("status", "")
-                    if "Primary" in status or "Bonus" in status:
-                        st.success(f"✅ {item['component']}: {item['element']} ({item['modifier']})")
-                    elif "Unfavorable" in status:
-                        st.error(f"❌ {item['component']}: {item['element']} ({item['modifier']})")
+        with col1:
+            st.download_button(
+                label="📥 Download JSON",
+                data=json_str,
+                file_name=f"qmdj_export_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                mime="application/json",
+                type="primary",
+                use_container_width=True
+            )
+        
+        with col2:
+            # Copy to clipboard (via text area)
+            if st.button("📋 Copy to Clipboard", use_container_width=True):
+                st.code(json_str, language="json")
+                st.info("Select all and copy the JSON above")
+        
+        with col3:
+            # CSV export for ML database
+            csv_row = export_data["tracking"]["db_row"]
+            st.download_button(
+                label="📊 Download CSV Row",
+                data=f"Date,Time,Palace,Formation,QMDJ_Score,BaZi_Score,Verdict,Status\n{csv_row}",
+                file_name=f"qmdj_row_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        # BaZi status indicator
+        st.markdown("---")
+        if user_profile:
+            st.success(f"✅ BaZi data included: {user_profile.get('day_master', 'Unknown')} ({user_profile.get('strength', 'Unknown')} {user_profile.get('element', '')})")
+        else:
+            st.warning("⚠️ No BaZi profile. Export will be QMDJ-only.")
+            if st.button("🔮 Set Up BaZi Profile", use_container_width=True):
+                st.switch_page("pages/6_BaZi.py")
+    
+    else:
+        st.info("📊 No chart data to export yet.")
+        st.markdown("Generate a QMDJ chart first to create exportable data.")
+        
+        if st.button("📊 Go to Chart Generator", type="primary", use_container_width=True):
+            st.switch_page("pages/1_Chart.py")
         
         st.markdown("---")
-        universal_json = json.dumps(universal_data, indent=2, ensure_ascii=False, default=str)
-        st.code(universal_json, language="json")
         
-        st.download_button("⬇️ Download JSON", universal_json, 
-                          f"qmdj_bazi_{datetime.now().strftime('%Y%m%d_%H%M')}.json", "application/json")
+        # Show BaZi status
+        if user_profile:
+            st.success(f"✅ BaZi profile ready: {user_profile.get('day_master', 'Unknown')}")
+        else:
+            st.warning("⚠️ No BaZi profile set. Exports will be QMDJ-only.")
+            if st.button("🔮 Set Up BaZi Profile"):
+                st.switch_page("pages/6_BaZi.py")
 
 with tab2:
-    if not bazi_data:
-        st.warning("⚠️ No BaZi profile. Use BaZi Calculator or Settings.")
-    else:
-        dm = bazi_data.get("day_master", {})
-        st.metric("Day Master", f"{dm.get('stem_chinese', '')} {dm.get('element', '')} ({dm.get('strength', '')})")
-        
-        ug = bazi_data.get("useful_gods", {})
-        st.success(f"✅ Primary: {ug.get('primary', 'N/A')}")
-        st.info(f"📌 Secondary: {ug.get('secondary', 'N/A')}")
-        
-        if bazi_data.get("four_pillars") and bazi_data["four_pillars"] != "Not calculated":
-            st.markdown("**Four Pillars:**")
-            fp = bazi_data["four_pillars"]
-            cols = st.columns(4)
-            for i, pn in enumerate(["year", "month", "day", "hour"]):
-                if pn in fp:
-                    with cols[i]:
-                        st.write(f"{pn.title()}: {fp[pn]['stem']['chinese']}{fp[pn]['branch']['chinese']}")
-
-with tab3:
-    st.markdown("""
-    ### Workflow
-    1. Generate QMDJ chart
-    2. Calculate BaZi (or set in Settings)
-    3. Export JSON here
-    4. Paste in Project 1
-    5. Say: **"Analyze and output as bilingual docx report"**
+    st.subheader("❓ How to Use Export Data")
     
-    ### Score Guide
-    - **8-10**: Highly Auspicious
-    - **6-7.9**: Auspicious  
-    - **4-5.9**: Neutral
-    - **2-3.9**: Challenging
-    - **0-1.9**: Very Challenging
+    st.markdown("""
+    ### Universal Schema v2.0
+    
+    The export follows the **Universal Data Schema v2.0** format designed for:
+    
+    1. **AI Analysis** - Feed JSON to Claude or other LLMs for interpretation
+    2. **ML Training** - CSV rows build your pattern database
+    3. **Cross-Reference** - QMDJ + BaZi data in one package
+    
+    ### Data Sections
+    
+    | Section | Contents |
+    |---------|----------|
+    | `metadata` | Date, time, method, analysis type |
+    | `qmdj_data` | Palace, components, formations |
+    | `bazi_data` | Day Master, useful gods, structures |
+    | `synthesis` | Scores (1-10), verdict, action |
+    | `tracking` | CSV row, outcome status |
+    
+    ### Workflow
+    
+    1. **Generate Chart** → Create QMDJ reading
+    2. **Export JSON** → Download or copy data
+    3. **Analyze** → Send to Analyst Engine (Claude)
+    4. **Track** → Record outcome in History
     """)
+    
+    st.markdown("---")
+    
+    st.markdown("### Example JSON Structure")
+    
+    example = {
+        "schema_version": "2.0",
+        "metadata": {
+            "date_time": "2024-12-30 14:30",
+            "analysis_type": "QMDJ_BAZI_INTEGRATED"
+        },
+        "qmdj_data": {
+            "palace_analyzed": {"name": "Qian", "number": 6},
+            "components": {"door": "Open", "star": "Heart"}
+        },
+        "bazi_data": {
+            "day_master": {"stem": "Geng 庚", "strength": "Weak"}
+        },
+        "synthesis": {
+            "qmdj_score": 7,
+            "bazi_alignment_score": 8,
+            "verdict": "AUSPICIOUS"
+        }
+    }
+    
+    st.json(example)
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+with st.sidebar:
+    st.markdown("---")
+    if st.session_state.get("user_profile"):
+        profile = st.session_state.user_profile
+        st.markdown("### 👤 Your BaZi")
+        st.markdown(f"**{profile['day_master']}**")
+        st.markdown(f"{profile['polarity']} {profile['element']} • {profile['strength']}")
+        if profile.get('useful_gods'):
+            st.caption(f"Useful: {', '.join(profile['useful_gods'])}")
+    else:
+        st.info("No BaZi profile set")
+        if st.button("🔮 Set Up BaZi", key="sidebar_bazi"):
+            st.switch_page("pages/6_BaZi.py")
+
+# Footer
+st.markdown("---")
+st.caption("🌟 Ming Qimen 明奇门 | Export Center v4.0")
