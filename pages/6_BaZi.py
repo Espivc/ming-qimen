@@ -1,476 +1,689 @@
 """
-BaZi Calculator Page - FIXED v3.1
-====================
-Ming Qimen 明奇门 - Page 6
-
-FIXED: Now saves to st.session_state.user_profile (not user_bazi_profile)
-so it syncs with sidebar and other pages.
+Ming Qimen - BaZi Calculator Page
+Version: 4.0
+Features:
+- Birth date + hour + minute selection
+- "Unknown birth time" skip option
+- Full Four Pillars calculation
+- Save to session state (user_profile)
 """
 
 import streamlit as st
-from datetime import datetime, date, time
-import json
-from typing import Dict, Optional
-import sys
-import os
+from datetime import datetime, date
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# =============================================================================
+# ============================================================
 # CONSTANTS
-# =============================================================================
+# ============================================================
 
-HEAVENLY_STEMS = [
-    {"chinese": "甲", "pinyin": "Jia", "element": "Wood", "polarity": "Yang", "index": 0},
-    {"chinese": "乙", "pinyin": "Yi", "element": "Wood", "polarity": "Yin", "index": 1},
-    {"chinese": "丙", "pinyin": "Bing", "element": "Fire", "polarity": "Yang", "index": 2},
-    {"chinese": "丁", "pinyin": "Ding", "element": "Fire", "polarity": "Yin", "index": 3},
-    {"chinese": "戊", "pinyin": "Wu", "element": "Earth", "polarity": "Yang", "index": 4},
-    {"chinese": "己", "pinyin": "Ji", "element": "Earth", "polarity": "Yin", "index": 5},
-    {"chinese": "庚", "pinyin": "Geng", "element": "Metal", "polarity": "Yang", "index": 6},
-    {"chinese": "辛", "pinyin": "Xin", "element": "Metal", "polarity": "Yin", "index": 7},
-    {"chinese": "壬", "pinyin": "Ren", "element": "Water", "polarity": "Yang", "index": 8},
-    {"chinese": "癸", "pinyin": "Gui", "element": "Water", "polarity": "Yin", "index": 9},
-]
+STEMS = ["Jia 甲", "Yi 乙", "Bing 丙", "Ding 丁", "Wu 戊", 
+         "Ji 己", "Geng 庚", "Xin 辛", "Ren 壬", "Gui 癸"]
 
-EARTHLY_BRANCHES = [
-    {"chinese": "子", "pinyin": "Zi", "animal": "Rat", "element": "Water", "polarity": "Yang", 
-     "hidden_stems": ["癸"], "index": 0},
-    {"chinese": "丑", "pinyin": "Chou", "animal": "Ox", "element": "Earth", "polarity": "Yin",
-     "hidden_stems": ["己", "癸", "辛"], "index": 1},
-    {"chinese": "寅", "pinyin": "Yin", "animal": "Tiger", "element": "Wood", "polarity": "Yang",
-     "hidden_stems": ["甲", "丙", "戊"], "index": 2},
-    {"chinese": "卯", "pinyin": "Mao", "animal": "Rabbit", "element": "Wood", "polarity": "Yin",
-     "hidden_stems": ["乙"], "index": 3},
-    {"chinese": "辰", "pinyin": "Chen", "animal": "Dragon", "element": "Earth", "polarity": "Yang",
-     "hidden_stems": ["戊", "乙", "癸"], "index": 4},
-    {"chinese": "巳", "pinyin": "Si", "animal": "Snake", "element": "Fire", "polarity": "Yin",
-     "hidden_stems": ["丙", "庚", "戊"], "index": 5},
-    {"chinese": "午", "pinyin": "Wu", "animal": "Horse", "element": "Fire", "polarity": "Yang",
-     "hidden_stems": ["丁", "己"], "index": 6},
-    {"chinese": "未", "pinyin": "Wei", "animal": "Goat", "element": "Earth", "polarity": "Yin",
-     "hidden_stems": ["己", "丁", "乙"], "index": 7},
-    {"chinese": "申", "pinyin": "Shen", "animal": "Monkey", "element": "Metal", "polarity": "Yang",
-     "hidden_stems": ["庚", "壬", "戊"], "index": 8},
-    {"chinese": "酉", "pinyin": "You", "animal": "Rooster", "element": "Metal", "polarity": "Yin",
-     "hidden_stems": ["辛"], "index": 9},
-    {"chinese": "戌", "pinyin": "Xu", "animal": "Dog", "element": "Earth", "polarity": "Yang",
-     "hidden_stems": ["戊", "辛", "丁"], "index": 10},
-    {"chinese": "亥", "pinyin": "Hai", "animal": "Pig", "element": "Water", "polarity": "Yin",
-     "hidden_stems": ["壬", "甲"], "index": 11},
-]
+BRANCHES = ["Zi 子", "Chou 丑", "Yin 寅", "Mao 卯", "Chen 辰", "Si 巳",
+            "Wu 午", "Wei 未", "Shen 申", "You 酉", "Xu 戌", "Hai 亥"]
 
-ELEMENT_COLORS = {
-    "Wood": "#22C55E",
-    "Fire": "#EF4444",
-    "Earth": "#A16207",
-    "Metal": "#9CA3AF",
-    "Water": "#3B82F6"
+STEM_ELEMENTS = {
+    "Jia": "Wood", "Yi": "Wood", "Bing": "Fire", "Ding": "Fire",
+    "Wu": "Earth", "Ji": "Earth", "Geng": "Metal", "Xin": "Metal",
+    "Ren": "Water", "Gui": "Water"
 }
 
-ELEMENT_PRODUCES = {"Wood": "Fire", "Fire": "Earth", "Earth": "Metal", "Metal": "Water", "Water": "Wood"}
-ELEMENT_CONTROLS = {"Wood": "Earth", "Fire": "Metal", "Earth": "Water", "Metal": "Wood", "Water": "Fire"}
-ELEMENT_PRODUCED_BY = {"Wood": "Water", "Fire": "Wood", "Earth": "Fire", "Metal": "Earth", "Water": "Metal"}
-ELEMENT_CONTROLLED_BY = {"Wood": "Metal", "Fire": "Water", "Earth": "Wood", "Metal": "Fire", "Water": "Earth"}
-
-TEN_GODS_NAMES = {
-    "same_same": ("Rob Wealth", "劫财"),
-    "same_diff": ("Friend", "比肩"),
-    "resource_same": ("Indirect Resource", "偏印"),
-    "resource_diff": ("Direct Resource", "正印"),
-    "output_same": ("Hurting Officer", "伤官"),
-    "output_diff": ("Eating God", "食神"),
-    "wealth_same": ("Indirect Wealth", "偏财"),
-    "wealth_diff": ("Direct Wealth", "正财"),
-    "authority_same": ("7 Killings", "七杀"),
-    "authority_diff": ("Direct Officer", "正官"),
+STEM_POLARITY = {
+    "Jia": "Yang", "Yi": "Yin", "Bing": "Yang", "Ding": "Yin",
+    "Wu": "Yang", "Ji": "Yin", "Geng": "Yang", "Xin": "Yin",
+    "Ren": "Yang", "Gui": "Yin"
 }
 
-# =============================================================================
-# PAGE CONFIG
-# =============================================================================
+BRANCH_ELEMENTS = {
+    "Zi": "Water", "Chou": "Earth", "Yin": "Wood", "Mao": "Wood",
+    "Chen": "Earth", "Si": "Fire", "Wu": "Fire", "Wei": "Earth",
+    "Shen": "Metal", "You": "Metal", "Xu": "Earth", "Hai": "Water"
+}
 
-st.set_page_config(
-    page_title="BaZi Calculator | 八字计算器",
-    page_icon="🎴",
-    layout="wide"
-)
+# Hidden Stems in each Branch
+HIDDEN_STEMS = {
+    "Zi": ["Gui"],
+    "Chou": ["Ji", "Gui", "Xin"],
+    "Yin": ["Jia", "Bing", "Wu"],
+    "Mao": ["Yi"],
+    "Chen": ["Wu", "Yi", "Gui"],
+    "Si": ["Bing", "Wu", "Geng"],
+    "Wu": ["Ding", "Ji"],
+    "Wei": ["Ji", "Ding", "Yi"],
+    "Shen": ["Geng", "Ren", "Wu"],
+    "You": ["Xin"],
+    "Xu": ["Wu", "Xin", "Ding"],
+    "Hai": ["Ren", "Jia"]
+}
 
+# Ten Gods mapping (from Day Master perspective)
+TEN_GODS = {
+    ("Wood", "Wood", "Yang", "Yang"): "Friend 比肩",
+    ("Wood", "Wood", "Yang", "Yin"): "Rob Wealth 劫财",
+    ("Wood", "Fire", "Yang", "Yang"): "Eating God 食神",
+    ("Wood", "Fire", "Yang", "Yin"): "Hurting Officer 伤官",
+    ("Wood", "Earth", "Yang", "Yang"): "Indirect Wealth 偏财",
+    ("Wood", "Earth", "Yang", "Yin"): "Direct Wealth 正财",
+    ("Wood", "Metal", "Yang", "Yang"): "7 Killings 七杀",
+    ("Wood", "Metal", "Yang", "Yin"): "Direct Officer 正官",
+    ("Wood", "Water", "Yang", "Yang"): "Indirect Resource 偏印",
+    ("Wood", "Water", "Yang", "Yin"): "Direct Resource 正印",
+    # Fire Day Master
+    ("Fire", "Fire", "Yang", "Yang"): "Friend 比肩",
+    ("Fire", "Fire", "Yang", "Yin"): "Rob Wealth 劫财",
+    ("Fire", "Earth", "Yang", "Yang"): "Eating God 食神",
+    ("Fire", "Earth", "Yang", "Yin"): "Hurting Officer 伤官",
+    ("Fire", "Metal", "Yang", "Yang"): "Indirect Wealth 偏财",
+    ("Fire", "Metal", "Yang", "Yin"): "Direct Wealth 正财",
+    ("Fire", "Water", "Yang", "Yang"): "7 Killings 七杀",
+    ("Fire", "Water", "Yang", "Yin"): "Direct Officer 正官",
+    ("Fire", "Wood", "Yang", "Yang"): "Indirect Resource 偏印",
+    ("Fire", "Wood", "Yang", "Yin"): "Direct Resource 正印",
+    # Earth Day Master
+    ("Earth", "Earth", "Yang", "Yang"): "Friend 比肩",
+    ("Earth", "Earth", "Yang", "Yin"): "Rob Wealth 劫财",
+    ("Earth", "Metal", "Yang", "Yang"): "Eating God 食神",
+    ("Earth", "Metal", "Yang", "Yin"): "Hurting Officer 伤官",
+    ("Earth", "Water", "Yang", "Yang"): "Indirect Wealth 偏财",
+    ("Earth", "Water", "Yang", "Yin"): "Direct Wealth 正财",
+    ("Earth", "Wood", "Yang", "Yang"): "7 Killings 七杀",
+    ("Earth", "Wood", "Yang", "Yin"): "Direct Officer 正官",
+    ("Earth", "Fire", "Yang", "Yang"): "Indirect Resource 偏印",
+    ("Earth", "Fire", "Yang", "Yin"): "Direct Resource 正印",
+    # Metal Day Master
+    ("Metal", "Metal", "Yang", "Yang"): "Friend 比肩",
+    ("Metal", "Metal", "Yang", "Yin"): "Rob Wealth 劫财",
+    ("Metal", "Water", "Yang", "Yang"): "Eating God 食神",
+    ("Metal", "Water", "Yang", "Yin"): "Hurting Officer 伤官",
+    ("Metal", "Wood", "Yang", "Yang"): "Indirect Wealth 偏财",
+    ("Metal", "Wood", "Yang", "Yin"): "Direct Wealth 正财",
+    ("Metal", "Fire", "Yang", "Yang"): "7 Killings 七杀",
+    ("Metal", "Fire", "Yang", "Yin"): "Direct Officer 正官",
+    ("Metal", "Earth", "Yang", "Yang"): "Indirect Resource 偏印",
+    ("Metal", "Earth", "Yang", "Yin"): "Direct Resource 正印",
+    # Water Day Master
+    ("Water", "Water", "Yang", "Yang"): "Friend 比肩",
+    ("Water", "Water", "Yang", "Yin"): "Rob Wealth 劫财",
+    ("Water", "Wood", "Yang", "Yang"): "Eating God 食神",
+    ("Water", "Wood", "Yang", "Yin"): "Hurting Officer 伤官",
+    ("Water", "Fire", "Yang", "Yang"): "Indirect Wealth 偏财",
+    ("Water", "Fire", "Yang", "Yin"): "Direct Wealth 正财",
+    ("Water", "Earth", "Yang", "Yang"): "7 Killings 七杀",
+    ("Water", "Earth", "Yang", "Yin"): "Direct Officer 正官",
+    ("Water", "Metal", "Yang", "Yang"): "Indirect Resource 偏印",
+    ("Water", "Metal", "Yang", "Yin"): "Direct Resource 正印",
+}
+
+# Profile types based on dominant Ten God
+PROFILE_TYPES = {
+    "Direct Wealth": "Diplomat 正财格",
+    "Indirect Wealth": "Pioneer 偏财格",
+    "Direct Officer": "Director 正官格",
+    "7 Killings": "Warrior 七杀格",
+    "Direct Resource": "Analyzer 正印格",
+    "Indirect Resource": "Philosopher 偏印格",
+    "Eating God": "Artist 食神格",
+    "Hurting Officer": "Performer 伤官格",
+    "Friend": "Leader 比肩格",
+    "Rob Wealth": "Competitor 劫财格"
+}
+
+# Hour branch mapping (using Chinese double-hour system)
+HOUR_BRANCHES = {
+    (23, 1): "Zi 子",
+    (1, 3): "Chou 丑",
+    (3, 5): "Yin 寅",
+    (5, 7): "Mao 卯",
+    (7, 9): "Chen 辰",
+    (9, 11): "Si 巳",
+    (11, 13): "Wu 午",
+    (13, 15): "Wei 未",
+    (15, 17): "Shen 申",
+    (17, 19): "You 酉",
+    (19, 21): "Xu 戌",
+    (21, 23): "Hai 亥"
+}
+
+# Simplified Solar Terms (approximate dates for month pillar)
+SOLAR_TERMS = [
+    (2, 4),   # Li Chun - Start of Yin month
+    (3, 6),   # Jing Zhe - Start of Mao month
+    (4, 5),   # Qing Ming - Start of Chen month
+    (5, 6),   # Li Xia - Start of Si month
+    (6, 6),   # Mang Zhong - Start of Wu month
+    (7, 7),   # Xiao Shu - Start of Wei month
+    (8, 8),   # Li Qiu - Start of Shen month
+    (9, 8),   # Bai Lu - Start of You month
+    (10, 8),  # Han Lu - Start of Xu month
+    (11, 7),  # Li Dong - Start of Hai month
+    (12, 7),  # Da Xue - Start of Zi month
+    (1, 6),   # Xiao Han - Start of Chou month
+]
+
+
+# ============================================================
+# CALCULATION FUNCTIONS
+# ============================================================
+
+def get_stem_index(stem_str):
+    """Get index of stem (0-9)"""
+    for i, s in enumerate(STEMS):
+        if stem_str in s or s.split()[0] == stem_str:
+            return i
+    return 0
+
+def get_branch_index(branch_str):
+    """Get index of branch (0-11)"""
+    for i, b in enumerate(BRANCHES):
+        if branch_str in b or b.split()[0] == branch_str:
+            return i
+    return 0
+
+def calculate_year_pillar(year):
+    """Calculate Year Pillar stem and branch"""
+    # Year stem: (year - 4) % 10
+    stem_index = (year - 4) % 10
+    # Year branch: (year - 4) % 12
+    branch_index = (year - 4) % 12
+    return STEMS[stem_index], BRANCHES[branch_index]
+
+def calculate_month_pillar(year, month, day):
+    """Calculate Month Pillar using solar terms"""
+    # Determine solar month (Yin = 0, Mao = 1, etc.)
+    solar_month = month - 2  # Default
+    
+    # Check if before or after solar term for the month
+    for i, (term_month, term_day) in enumerate(SOLAR_TERMS):
+        if month == term_month and day < term_day:
+            solar_month = (i - 1) % 12
+            break
+        elif month == term_month and day >= term_day:
+            solar_month = i
+            break
+    
+    # Adjust for Yin as first month
+    solar_month = (month - 2) % 12
+    if day < SOLAR_TERMS[solar_month % 12][1]:
+        solar_month = (solar_month - 1) % 12
+    
+    # Month branch
+    branch_index = (solar_month + 2) % 12  # Yin = index 2
+    
+    # Month stem depends on year stem
+    year_stem, _ = calculate_year_pillar(year)
+    year_stem_index = get_stem_index(year_stem)
+    
+    # Formula: (year_stem_index % 5) * 2 + solar_month + 2
+    stem_index = ((year_stem_index % 5) * 2 + solar_month + 2) % 10
+    
+    return STEMS[stem_index], BRANCHES[branch_index]
+
+def calculate_day_pillar(year, month, day):
+    """Calculate Day Pillar using simplified formula"""
+    # Reference date: Jan 1, 1900 was Jia Chen (stem=0, branch=4)
+    from datetime import date as dt
+    ref_date = dt(1900, 1, 1)
+    target_date = dt(year, month, day)
+    days_diff = (target_date - ref_date).days
+    
+    # Jan 1, 1900 = Jia Chen (stem 0, branch 4)
+    stem_index = (days_diff + 0) % 10
+    branch_index = (days_diff + 4) % 12
+    
+    return STEMS[stem_index], BRANCHES[branch_index]
+
+def calculate_hour_pillar(day_stem, hour, minute=0):
+    """Calculate Hour Pillar from day stem and birth hour"""
+    if hour is None:
+        return None, None
+    
+    # Adjust for minute (if >= 30 min, could affect boundary hours)
+    adjusted_hour = hour
+    
+    # Get hour branch
+    hour_branch = None
+    for (start, end), branch in HOUR_BRANCHES.items():
+        if start == 23:
+            if hour >= 23 or hour < end:
+                hour_branch = branch
+                break
+        elif start <= hour < end:
+            hour_branch = branch
+            break
+    
+    if not hour_branch:
+        hour_branch = BRANCHES[0]  # Default to Zi
+    
+    # Hour stem depends on day stem
+    day_stem_index = get_stem_index(day_stem)
+    hour_branch_index = get_branch_index(hour_branch)
+    
+    # Formula: (day_stem_index % 5) * 2 + hour_branch_index
+    stem_index = ((day_stem_index % 5) * 2 + hour_branch_index) % 10
+    
+    return STEMS[stem_index], hour_branch
+
+def get_ten_god(dm_element, dm_polarity, target_element, target_polarity):
+    """Get Ten God relationship"""
+    # Simplify polarity matching - same polarity = indirect, different = direct
+    polarity_match = "Yang" if dm_polarity == target_polarity else "Yin"
+    
+    key = (dm_element, target_element, "Yang", polarity_match)
+    return TEN_GODS.get(key, "Unknown")
+
+def assess_dm_strength(pillars, dm_element):
+    """Assess Day Master strength (simplified)"""
+    support_count = 0
+    weaken_count = 0
+    
+    # Element relationships
+    produces = {"Wood": "Fire", "Fire": "Earth", "Earth": "Metal", 
+                "Metal": "Water", "Water": "Wood"}
+    produced_by = {v: k for k, v in produces.items()}
+    
+    for pillar_name, (stem, branch) in pillars.items():
+        if stem and branch:
+            stem_name = stem.split()[0]
+            branch_name = branch.split()[0]
+            
+            stem_element = STEM_ELEMENTS.get(stem_name, "")
+            branch_element = BRANCH_ELEMENTS.get(branch_name, "")
+            
+            # Check support (same element or produces DM)
+            for elem in [stem_element, branch_element]:
+                if elem == dm_element:
+                    support_count += 1
+                elif produced_by.get(dm_element) == elem:
+                    support_count += 1
+                elif produces.get(dm_element) == elem:
+                    weaken_count += 1
+                elif produces.get(elem) == dm_element:
+                    weaken_count += 0.5  # Controlling element
+    
+    # Calculate strength score (1-10)
+    total = support_count + weaken_count
+    if total == 0:
+        strength_score = 5
+    else:
+        ratio = support_count / total
+        strength_score = int(ratio * 10)
+        strength_score = max(1, min(10, strength_score))
+    
+    # Determine strength label
+    if strength_score >= 7:
+        strength = "Strong"
+    elif strength_score >= 4:
+        strength = "Balanced"
+    else:
+        strength = "Weak"
+    
+    return strength, strength_score
+
+def get_useful_gods(dm_element, strength):
+    """Determine useful gods based on DM and strength"""
+    produces = {"Wood": "Fire", "Fire": "Earth", "Earth": "Metal", 
+                "Metal": "Water", "Water": "Wood"}
+    produced_by = {v: k for k, v in produces.items()}
+    controls = {"Wood": "Earth", "Fire": "Metal", "Earth": "Water",
+                "Metal": "Wood", "Water": "Fire"}
+    
+    if strength == "Weak":
+        # Weak DM needs support - same element and resource
+        useful = [dm_element, produced_by.get(dm_element, "")]
+        unfavorable = [produces.get(dm_element, "")]
+    else:
+        # Strong DM needs output/control
+        useful = [produces.get(dm_element, ""), controls.get(dm_element, "")]
+        unfavorable = [dm_element, produced_by.get(dm_element, "")]
+    
+    return [u for u in useful if u], [u for u in unfavorable if u]
+
+def detect_special_structures(pillars, dm_element):
+    """Detect special BaZi structures"""
+    structures = {
+        "wealth_vault": False,
+        "nobleman": False,
+        "other": []
+    }
+    
+    # Check for Wealth Vault (Chen, Xu, Chou, Wei)
+    vault_branches = ["Chen", "Xu", "Chou", "Wei"]
+    for pillar_name, (stem, branch) in pillars.items():
+        if branch:
+            branch_name = branch.split()[0]
+            if branch_name in vault_branches:
+                structures["wealth_vault"] = True
+                break
+    
+    # Check for Nobleman (Yi-Zi/Shen, Jia-Chou/Wei, etc.) - simplified
+    dm_stem = pillars.get("Day", (None, None))[0]
+    if dm_stem:
+        dm_name = dm_stem.split()[0]
+        nobleman_map = {
+            "Jia": ["Chou", "Wei"], "Wu": ["Chou", "Wei"],
+            "Yi": ["Zi", "Shen"], "Ji": ["Zi", "Shen"],
+            "Bing": ["Hai", "You"], "Ding": ["Hai", "You"],
+            "Geng": ["Chou", "Wei"], "Xin": ["Yin", "Wu"],
+            "Ren": ["Mao", "Si"], "Gui": ["Mao", "Si"]
+        }
+        nobleman_branches = nobleman_map.get(dm_name, [])
+        for pillar_name, (stem, branch) in pillars.items():
+            if branch:
+                branch_name = branch.split()[0]
+                if branch_name in nobleman_branches:
+                    structures["nobleman"] = True
+                    break
+    
+    return structures
+
+
+# ============================================================
+# PAGE UI
+# ============================================================
+
+st.set_page_config(page_title="BaZi Calculator", page_icon="🎂", layout="wide")
+
+# Custom CSS
 st.markdown("""
 <style>
-    .stApp { background-color: #1a1a2e; }
+    .bazi-title { color: #FFD700; font-size: 2.5rem; font-weight: bold; }
+    .pillar-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid #FFD700;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        margin: 0.5rem;
+    }
+    .pillar-stem { color: #FFD700; font-size: 1.5rem; font-weight: bold; }
+    .pillar-branch { color: #87CEEB; font-size: 1.3rem; }
+    .pillar-label { color: #888; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .element-badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+    }
+    .wood { background: #228B22; color: white; }
+    .fire { background: #DC143C; color: white; }
+    .earth { background: #DAA520; color: black; }
+    .metal { background: #C0C0C0; color: black; }
+    .water { background: #4169E1; color: white; }
+    .save-success {
+        background: #1a472a;
+        border: 1px solid #2ecc71;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    .dm-highlight {
+        background: linear-gradient(135deg, #2d1f3d 0%, #1a1a2e 100%);
+        border: 2px solid #9B59B6;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# =============================================================================
-# SESSION STATE
-# =============================================================================
+st.markdown('<p class="bazi-title">🎂 BaZi Calculator 八字计算器</p>', unsafe_allow_html=True)
+st.caption("Calculate your Four Pillars of Destiny")
 
-if 'bazi_calculated' not in st.session_state:
-    st.session_state.bazi_calculated = False
-if 'bazi_data' not in st.session_state:
-    st.session_state.bazi_data = None
-if 'birth_datetime' not in st.session_state:
-    st.session_state.birth_datetime = None
-if 'user_profile' not in st.session_state:
-    st.session_state.user_profile = {}
+st.divider()
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
+# ============================================================
+# BIRTH DATA INPUT
+# ============================================================
 
-def get_stem_color(element: str) -> str:
-    return ELEMENT_COLORS.get(element, "#FFFFFF")
+st.subheader("📅 Enter Birth Information")
 
-def get_stem_by_index(index: int) -> Dict:
-    return HEAVENLY_STEMS[index % 10]
-
-def get_branch_by_index(index: int) -> Dict:
-    return EARTHLY_BRANCHES[index % 12]
-
-# =============================================================================
-# FOUR PILLARS CALCULATION
-# =============================================================================
-
-def calculate_year_pillar(year: int) -> Dict:
-    stem_index = (year - 4) % 10
-    branch_index = (year - 4) % 12
-    stem = get_stem_by_index(stem_index)
-    branch = get_branch_by_index(branch_index)
-    return {"stem": stem, "branch": branch, "pillar_name": "Year 年柱"}
-
-def calculate_month_pillar(year: int, month: int, year_stem_index: int) -> Dict:
-    branch_index = (month + 1) % 12
-    stem_index = (year_stem_index * 2 + month) % 10
-    stem = get_stem_by_index(stem_index)
-    branch = get_branch_by_index(branch_index)
-    return {"stem": stem, "branch": branch, "pillar_name": "Month 月柱"}
-
-def calculate_day_pillar(year: int, month: int, day: int) -> Dict:
-    from datetime import date as dt_date
-    reference = dt_date(1900, 1, 1)
-    target = dt_date(year, month, day)
-    days_diff = (target - reference).days
-    stem_index = days_diff % 10
-    branch_index = days_diff % 12
-    stem = get_stem_by_index(stem_index)
-    branch = get_branch_by_index(branch_index)
-    return {"stem": stem, "branch": branch, "pillar_name": "Day 日柱"}
-
-def calculate_hour_pillar(hour: int, day_stem_index: int) -> Dict:
-    if hour == 23 or hour == 0:
-        branch_index = 0
-    else:
-        branch_index = ((hour + 1) // 2) % 12
-    stem_index = (day_stem_index * 2 + branch_index) % 10
-    stem = get_stem_by_index(stem_index)
-    branch = get_branch_by_index(branch_index)
-    return {"stem": stem, "branch": branch, "pillar_name": "Hour 时柱"}
-
-def calculate_four_pillars(birth_dt: datetime) -> Dict:
-    year_pillar = calculate_year_pillar(birth_dt.year)
-    month_pillar = calculate_month_pillar(birth_dt.year, birth_dt.month, year_pillar["stem"]["index"])
-    day_pillar = calculate_day_pillar(birth_dt.year, birth_dt.month, birth_dt.day)
-    hour_pillar = calculate_hour_pillar(birth_dt.hour, day_pillar["stem"]["index"])
-    return {
-        "year": year_pillar,
-        "month": month_pillar,
-        "day": day_pillar,
-        "hour": hour_pillar,
-        "day_master": day_pillar["stem"]
-    }
-
-# =============================================================================
-# TEN GODS
-# =============================================================================
-
-def calculate_ten_god(dm_element: str, dm_polarity: str, target_element: str, target_polarity: str) -> tuple:
-    same_polarity = (dm_polarity == target_polarity)
-    if dm_element == target_element:
-        return TEN_GODS_NAMES["same_same" if same_polarity else "same_diff"]
-    elif ELEMENT_PRODUCED_BY[dm_element] == target_element:
-        return TEN_GODS_NAMES["resource_same" if same_polarity else "resource_diff"]
-    elif ELEMENT_PRODUCES[dm_element] == target_element:
-        return TEN_GODS_NAMES["output_same" if same_polarity else "output_diff"]
-    elif ELEMENT_CONTROLS[dm_element] == target_element:
-        return TEN_GODS_NAMES["wealth_same" if same_polarity else "wealth_diff"]
-    elif ELEMENT_CONTROLLED_BY[dm_element] == target_element:
-        return TEN_GODS_NAMES["authority_same" if same_polarity else "authority_diff"]
-    return ("Unknown", "?")
-
-def generate_ten_gods_mapping(dm_stem: Dict) -> Dict:
-    mapping = {}
-    for stem in HEAVENLY_STEMS:
-        god_en, god_cn = calculate_ten_god(dm_stem["element"], dm_stem["polarity"], stem["element"], stem["polarity"])
-        mapping[stem["chinese"]] = {"stem_chinese": stem["chinese"], "stem_pinyin": stem["pinyin"], 
-                                     "element": stem["element"], "ten_god_en": god_en, "ten_god_cn": god_cn}
-    return mapping
-
-# =============================================================================
-# STRENGTH & USEFUL GODS
-# =============================================================================
-
-def assess_strength(dm_element: str, month_branch: Dict, pillars: Dict) -> Dict:
-    season_map = {
-        "Wood": {0: "Strong", 1: "Strong", 2: "Strong", 3: "Weak", 4: "Weak", 5: "Weak",
-                 6: "Dead", 7: "Dead", 8: "Dead", 9: "Weak", 10: "Weak", 11: "Strong"},
-        "Fire": {0: "Dead", 1: "Weak", 2: "Strong", 3: "Strong", 4: "Strong", 5: "Prosperous",
-                 6: "Prosperous", 7: "Weak", 8: "Dead", 9: "Dead", 10: "Weak", 11: "Dead"},
-        "Earth": {0: "Weak", 1: "Strong", 2: "Dead", 3: "Dead", 4: "Strong", 5: "Strong",
-                  6: "Strong", 7: "Prosperous", 8: "Weak", 9: "Weak", 10: "Prosperous", 11: "Weak"},
-        "Metal": {0: "Strong", 1: "Weak", 2: "Dead", 3: "Dead", 4: "Weak", 5: "Weak",
-                  6: "Weak", 7: "Strong", 8: "Prosperous", 9: "Prosperous", 10: "Strong", 11: "Strong"},
-        "Water": {0: "Prosperous", 1: "Strong", 2: "Weak", 3: "Weak", 4: "Weak", 5: "Dead",
-                  6: "Dead", 7: "Dead", 8: "Strong", 9: "Strong", 10: "Weak", 11: "Prosperous"}
-    }
-    branch_index = month_branch["index"]
-    seasonal = season_map.get(dm_element, {}).get(branch_index, "Balanced")
-    
-    support = 0
-    drain = 0
-    for pillar_name in ["year", "month", "day", "hour"]:
-        if pillar_name in pillars:
-            stem_el = pillars[pillar_name]["stem"]["element"]
-            if stem_el == dm_element or ELEMENT_PRODUCED_BY[dm_element] == stem_el:
-                support += 1
-            elif ELEMENT_PRODUCES[dm_element] == stem_el or ELEMENT_CONTROLS[dm_element] == stem_el:
-                drain += 1
-    
-    base_scores = {"Prosperous": 8, "Strong": 7, "Balanced": 5, "Weak": 3, "Dead": 2}
-    score = base_scores.get(seasonal, 5) + (support - drain) * 0.5
-    score = max(1, min(10, score))
-    
-    if score >= 8:
-        category = "Extremely Strong"
-    elif score >= 6:
-        category = "Strong"
-    elif score >= 4:
-        category = "Balanced"
-    elif score >= 2:
-        category = "Weak"
-    else:
-        category = "Extremely Weak"
-    
-    return {"seasonal_strength": seasonal, "support_count": support, "drain_count": drain, 
-            "score": round(score, 1), "category": category}
-
-def calculate_useful_gods(dm_element: str, strength_category: str) -> Dict:
-    resource = ELEMENT_PRODUCED_BY[dm_element]
-    companion = dm_element
-    output = ELEMENT_PRODUCES[dm_element]
-    wealth = ELEMENT_CONTROLS[dm_element]
-    authority = ELEMENT_CONTROLLED_BY[dm_element]
-    
-    if "Weak" in strength_category or "Dead" in strength_category:
-        return {"primary": resource, "secondary": companion, "unfavorable": [output, wealth],
-                "reasoning": f"Weak {dm_element} needs {resource} (Resource) and {companion} (Companion)."}
-    elif "Strong" in strength_category:
-        return {"primary": output, "secondary": wealth, "unfavorable": [resource, companion],
-                "reasoning": f"Strong {dm_element} needs {output} (Output) and {wealth} (Wealth)."}
-    else:
-        return {"primary": output, "secondary": wealth, "unfavorable": [],
-                "reasoning": f"Balanced {dm_element} benefits from most elements."}
-
-def detect_structures(pillars: Dict, dm_stem: Dict) -> Dict:
-    structures = {"wealth_vault": False, "nobleman_present": False, "nobleman_branches": []}
-    branches = [pillars[pn]["branch"]["chinese"] for pn in ["year", "month", "day", "hour"] if pn in pillars]
-    
-    vault_map = {"Wood": "未", "Fire": "戌", "Earth": "辰", "Metal": "丑", "Water": "辰"}
-    vault = vault_map.get(dm_stem["element"])
-    if vault and vault in branches:
-        structures["wealth_vault"] = True
-    
-    nobleman_map = {"甲": ["丑", "未"], "戊": ["丑", "未"], "庚": ["丑", "未"],
-                    "乙": ["子", "申"], "己": ["子", "申"], "丙": ["亥", "酉"], "丁": ["亥", "酉"],
-                    "辛": ["寅", "午"], "壬": ["卯", "巳"], "癸": ["卯", "巳"]}
-    nobles = nobleman_map.get(dm_stem["chinese"], [])
-    for n in nobles:
-        if n in branches:
-            structures["nobleman_present"] = True
-            structures["nobleman_branches"].append(n)
-    return structures
-
-# =============================================================================
-# MAIN UI
-# =============================================================================
-
-st.title("🎴 BaZi Calculator | 八字计算器")
-st.markdown("---")
-
-col1, col2 = st.columns([1, 2])
+col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📅 Birth Information")
-    birth_date = st.date_input("Birth Date 出生日期", value=date(1990, 1, 15), 
-                                min_value=date(1900, 1, 1), max_value=date.today())
-    birth_time = st.time_input("Birth Time 出生时间", value=time(12, 0))
-    st.warning("⚠️ Note: For accurate results, use actual local birth time.")
-    calculate_btn = st.button("🔮 Calculate BaZi | 计算八字", type="primary", use_container_width=True)
+    birth_date = st.date_input(
+        "Birth Date",
+        value=date(1988, 1, 6),  # Default to Ben's birthday
+        min_value=date(1900, 1, 1),
+        max_value=date.today(),
+        help="Select your birth date"
+    )
 
-if calculate_btn:
-    birth_dt = datetime.combine(birth_date, birth_time)
-    pillars = calculate_four_pillars(birth_dt)
-    st.session_state.bazi_calculated = True
-    st.session_state.birth_datetime = birth_dt
-    st.session_state.pillars = pillars
+with col2:
+    # Unknown time checkbox
+    unknown_time = st.checkbox(
+        "⏰ I don't know my birth time",
+        value=False,
+        help="Check this if you don't know your exact birth hour. Hour Pillar will be skipped."
+    )
 
-if st.session_state.bazi_calculated and 'pillars' in st.session_state:
-    pillars = st.session_state.pillars
-    dm = pillars["day_master"]
+# Time inputs (only show if birth time is known)
+if not unknown_time:
+    time_col1, time_col2 = st.columns(2)
     
-    with col2:
-        st.subheader("🎴 Four Pillars | 四柱")
-        p_cols = st.columns(4)
+    with time_col1:
+        birth_hour = st.selectbox(
+            "Birth Hour (24h)",
+            options=list(range(0, 24)),
+            index=12,
+            format_func=lambda x: f"{x:02d}:00 - {(x+1)%24:02d}:00",
+            help="Select the hour you were born"
+        )
+    
+    with time_col2:
+        birth_minute = st.selectbox(
+            "Birth Minute",
+            options=[0, 15, 30, 45],
+            index=0,
+            format_func=lambda x: f":{x:02d}",
+            help="Select approximate minute (optional for accuracy)"
+        )
+else:
+    birth_hour = None
+    birth_minute = None
+    st.info("💡 Without birth time, the Hour Pillar cannot be calculated. This affects accuracy of analysis.")
+
+st.divider()
+
+# ============================================================
+# CALCULATE BUTTON
+# ============================================================
+
+if st.button("🔮 Calculate BaZi", type="primary", use_container_width=True):
+    with st.spinner("Calculating your Four Pillars..."):
+        year = birth_date.year
+        month = birth_date.month
+        day = birth_date.day
         
-        for i, pillar_name in enumerate(["hour", "day", "month", "year"]):
-            pillar = pillars[pillar_name]
-            with p_cols[i]:
-                stem = pillar["stem"]
-                branch = pillar["branch"]
-                titles = {"year": "Year 年柱", "month": "Month 月柱", "day": "Day 日柱 ★", "hour": "Hour 时柱"}
-                st.markdown(f"**{titles[pillar_name]}**")
+        # Calculate pillars
+        year_stem, year_branch = calculate_year_pillar(year)
+        month_stem, month_branch = calculate_month_pillar(year, month, day)
+        day_stem, day_branch = calculate_day_pillar(year, month, day)
+        
+        if not unknown_time:
+            hour_stem, hour_branch = calculate_hour_pillar(day_stem, birth_hour, birth_minute)
+        else:
+            hour_stem, hour_branch = None, None
+        
+        # Store pillars
+        pillars = {
+            "Year": (year_stem, year_branch),
+            "Month": (month_stem, month_branch),
+            "Day": (day_stem, day_branch),
+            "Hour": (hour_stem, hour_branch)
+        }
+        
+        # Get Day Master info
+        dm_stem = day_stem.split()[0]
+        dm_element = STEM_ELEMENTS[dm_stem]
+        dm_polarity = STEM_POLARITY[dm_stem]
+        
+        # Assess strength
+        strength, strength_score = assess_dm_strength(pillars, dm_element)
+        
+        # Get useful gods
+        useful, unfavorable = get_useful_gods(dm_element, strength)
+        
+        # Detect structures
+        structures = detect_special_structures(pillars, dm_element)
+        
+        # Store in session state
+        st.session_state.bazi_calculated = True
+        st.session_state.pillars = pillars
+        st.session_state.bazi_result = {
+            "day_master": day_stem,
+            "element": dm_element,
+            "polarity": dm_polarity,
+            "strength": strength,
+            "strength_score": strength_score,
+            "useful_gods": useful,
+            "unfavorable": unfavorable,
+            "wealth_vault": structures["wealth_vault"],
+            "nobleman": structures["nobleman"],
+            "birth_date": birth_date.isoformat(),
+            "birth_time": f"{birth_hour:02d}:{birth_minute:02d}" if birth_hour is not None else "Unknown",
+            "unknown_time": unknown_time
+        }
+        
+        st.success("✅ BaZi calculated successfully!")
+
+# ============================================================
+# DISPLAY RESULTS
+# ============================================================
+
+if st.session_state.get("bazi_calculated"):
+    pillars = st.session_state.pillars
+    result = st.session_state.bazi_result
+    
+    st.subheader("🏛️ Your Four Pillars 四柱")
+    
+    # Display Four Pillars
+    cols = st.columns(4)
+    pillar_names = ["Hour", "Day", "Month", "Year"]
+    pillar_labels = ["时柱", "日柱", "月柱", "年柱"]
+    
+    for i, (name, label) in enumerate(zip(pillar_names, pillar_labels)):
+        with cols[i]:
+            stem, branch = pillars[name]
+            
+            if stem and branch:
+                stem_name = stem.split()[0]
+                branch_name = branch.split()[0]
+                stem_element = STEM_ELEMENTS.get(stem_name, "")
+                branch_element = BRANCH_ELEMENTS.get(branch_name, "")
                 
                 st.markdown(f"""
-                <div style='text-align: center; padding: 10px; background: linear-gradient(135deg, #2d2d44, #1a1a2e);
-                            border: 1px solid {get_stem_color(stem["element"])}; border-radius: 8px; margin: 5px 0;'>
-                    <div style='font-size: 32px; color: {get_stem_color(stem["element"])};'>{stem["chinese"]}</div>
-                    <div style='font-size: 12px; color: #888;'>{stem["pinyin"]} {stem["element"]}</div>
+                <div class="pillar-card">
+                    <div class="pillar-label">{name} {label}</div>
+                    <div class="pillar-stem">{stem}</div>
+                    <div class="pillar-branch">{branch}</div>
+                    <div>
+                        <span class="element-badge {stem_element.lower()}">{stem_element}</span>
+                        <span class="element-badge {branch_element.lower()}">{branch_element}</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
-                
+            else:
                 st.markdown(f"""
-                <div style='text-align: center; padding: 10px; background: linear-gradient(135deg, #2d2d44, #1a1a2e);
-                            border: 1px solid {get_stem_color(branch["element"])}; border-radius: 8px; margin: 5px 0;'>
-                    <div style='font-size: 32px; color: {get_stem_color(branch["element"])};'>{branch["chinese"]}</div>
-                    <div style='font-size: 12px; color: #888;'>{branch["pinyin"]} {branch["animal"]}</div>
-                    <div style='font-size: 10px; color: #666;'>藏干: {" ".join(branch["hidden_stems"])}</div>
+                <div class="pillar-card" style="opacity: 0.5;">
+                    <div class="pillar-label">{name} {label}</div>
+                    <div class="pillar-stem">--</div>
+                    <div class="pillar-branch">Unknown</div>
+                    <div><span class="element-badge">No Time</span></div>
                 </div>
                 """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    st.divider()
     
     # Day Master Analysis
-    st.subheader(f"👤 Day Master Analysis | 日主分析: {dm['chinese']} {dm['pinyin']}")
+    st.subheader("👤 Day Master Analysis")
     
-    dm_col1, dm_col2, dm_col3 = st.columns(3)
+    dm_col1, dm_col2 = st.columns(2)
     
     with dm_col1:
         st.markdown(f"""
-        <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, #2d2d44, #1a1a2e);
-                    border: 2px solid #d4af37; border-radius: 12px;'>
-            <div style='font-size: 48px; color: {get_stem_color(dm["element"])};'>{dm["chinese"]}</div>
-            <div style='font-size: 18px; color: #d4af37;'>{dm["pinyin"]}</div>
-            <div style='font-size: 14px; color: #fff;'>{dm["polarity"]} {dm["element"]}</div>
+        <div class="dm-highlight">
+            <h3 style="color: #FFD700; margin: 0;">🌟 {result['day_master']}</h3>
+            <p style="color: #9B59B6; font-size: 1.2rem;">{result['polarity']} {result['element']}</p>
+            <p style="color: #888;">Strength: <strong style="color: {'#2ecc71' if result['strength'] == 'Strong' else '#e74c3c' if result['strength'] == 'Weak' else '#f39c12'}">{result['strength']}</strong> ({result['strength_score']}/10)</p>
         </div>
         """, unsafe_allow_html=True)
-    
-    strength = assess_strength(dm["element"], pillars["month"]["branch"], pillars)
     
     with dm_col2:
-        st.markdown("**Strength Assessment | 强弱分析**")
-        st.metric("Seasonal 季节", strength["seasonal_strength"])
-        st.metric("Category 类别", strength["category"])
-        score_pct = (strength["score"] / 10) * 100
-        bar_color = "#22C55E" if strength["score"] >= 5 else "#EF4444"
-        st.markdown(f"""
-        <div style='background: #333; border-radius: 10px; height: 20px; overflow: hidden;'>
-            <div style='background: {bar_color}; width: {score_pct}%; height: 100%;'></div>
-        </div>
-        <div style='text-align: center; color: #888;'>Score: {strength["score"]}/10</div>
-        """, unsafe_allow_html=True)
-    
-    useful = calculate_useful_gods(dm["element"], strength["category"])
-    
-    with dm_col3:
-        st.markdown("**Useful Gods | 用神**")
-        st.success(f"✅ Primary 主用神: **{useful['primary']}**")
-        st.info(f"📌 Secondary 辅用神: **{useful['secondary']}**")
-        if useful.get("unfavorable"):
-            st.error(f"⛔ Avoid 忌神: **{', '.join(useful['unfavorable'])}**")
-    
-    st.markdown("---")
-    
-    # Ten Gods
-    st.subheader("🔟 Ten Gods Mapping | 十神映射")
-    ten_gods = generate_ten_gods_mapping(dm)
-    tg_cols = st.columns(5)
-    for i, stem in enumerate(HEAVENLY_STEMS):
-        with tg_cols[i % 5]:
-            god_data = ten_gods[stem["chinese"]]
-            st.markdown(f"""
-            <div style='text-align: center; padding: 8px; background: #2d2d44; border-radius: 8px;
-                        border: 1px solid {get_stem_color(stem["element"])}; margin: 3px 0;'>
-                <div style='font-size: 20px; color: {get_stem_color(stem["element"])};'>{stem["chinese"]}</div>
-                <div style='font-size: 10px; color: #888;'>{stem["pinyin"]}</div>
-                <div style='font-size: 11px; color: #d4af37;'>{god_data["ten_god_cn"]}</div>
-                <div style='font-size: 9px; color: #666;'>{god_data["ten_god_en"]}</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
+        st.markdown("**✅ Useful Gods (有用神)**")
+        for god in result['useful_gods']:
+            element_class = god.lower()
+            st.markdown(f'<span class="element-badge {element_class}">{god}</span>', unsafe_allow_html=True)
+        
+        st.markdown("**❌ Unfavorable (忌神)**")
+        for god in result['unfavorable']:
+            element_class = god.lower()
+            st.markdown(f'<span class="element-badge {element_class}">{god}</span>', unsafe_allow_html=True)
     
     # Special Structures
-    st.subheader("⭐ Special Structures | 特殊格局")
-    structures = detect_structures(pillars, dm)
+    st.markdown("**🏆 Special Structures**")
+    structures_found = []
+    if result['wealth_vault']:
+        structures_found.append("💰 Wealth Vault (财库)")
+    if result['nobleman']:
+        structures_found.append("👑 Nobleman (贵人)")
     
-    struct_cols = st.columns(2)
-    with struct_cols[0]:
-        if structures["wealth_vault"]:
-            st.success("💰 Wealth Vault Present | 财库存在")
-        else:
-            st.info("💰 No Wealth Vault | 无财库")
-    with struct_cols[1]:
-        if structures["nobleman_present"]:
-            st.success(f"🌟 Nobleman Present | 贵人存在: {', '.join(structures['nobleman_branches'])}")
-        else:
-            st.info("🌟 No Nobleman | 无贵人")
+    if structures_found:
+        for s in structures_found:
+            st.success(s)
+    else:
+        st.info("No special structures detected")
     
-    st.markdown("---")
+    st.divider()
     
-    # =========================================================================
-    # SAVE TO PROFILE - FIXED! Now saves to user_profile
-    # =========================================================================
+    # ============================================================
+    # SAVE TO PROFILE BUTTON
+    # ============================================================
     
-    st.subheader("💾 Save Profile")
+    st.subheader("💾 Save to Profile")
     
-    if st.button("💾 Save to Profile | 保存到档案", type="primary", use_container_width=True):
-        # Save to the CORRECT session state that sidebar uses
+    if st.button("📥 Save BaZi to Profile", type="primary", use_container_width=True):
+        # Save to user_profile (the correct session state key)
         st.session_state.user_profile = {
-            'day_master': f"{dm['pinyin']} {dm['chinese']}",
-            'element': dm['element'],
-            'polarity': dm['polarity'],
-            'strength': strength['category'],
-            'strength_score': strength['score'],
-            'profile': f"BaZi Calculated",
-            'useful_gods': [useful['primary'], useful['secondary']],
-            'unfavorable': useful.get('unfavorable', []),
-            'wealth_vault': structures['wealth_vault'],
-            'nobleman': structures['nobleman_present'],
-            'birth_date': st.session_state.birth_datetime.strftime("%Y-%m-%d"),
-            'birth_time': st.session_state.birth_datetime.strftime("%H:%M")
+            'day_master': result['day_master'],
+            'element': result['element'],
+            'polarity': result['polarity'],
+            'strength': result['strength'],
+            'strength_score': result['strength_score'],
+            'useful_gods': result['useful_gods'],
+            'unfavorable': result['unfavorable'],
+            'wealth_vault': result['wealth_vault'],
+            'nobleman': result['nobleman'],
+            'birth_date': result['birth_date'],
+            'birth_time': result['birth_time'],
+            'unknown_time': result.get('unknown_time', False)
         }
-        st.success("✅ Profile saved! Now visible in sidebar on all pages.")
+        
+        st.markdown("""
+        <div class="save-success">
+            ✅ <strong>BaZi profile saved successfully!</strong><br>
+            Your profile is now available in the sidebar and will be included in QMDJ exports.
+        </div>
+        """, unsafe_allow_html=True)
+        
         st.balloons()
-    
-    # Show current profile status
-    if st.session_state.user_profile.get('day_master'):
-        st.info(f"📋 Current profile: {st.session_state.user_profile.get('day_master')} | "
-                f"Strength: {st.session_state.user_profile.get('strength')}")
-    
+        st.rerun()  # Refresh to show in sidebar
+
+# ============================================================
+# SIDEBAR PROFILE DISPLAY
+# ============================================================
+
+with st.sidebar:
     st.markdown("---")
-    
-    # Export JSON
-    with st.expander("📤 Export JSON"):
-        export_data = {
-            "day_master": {"chinese": dm["chinese"], "pinyin": dm["pinyin"], 
-                          "element": dm["element"], "polarity": dm["polarity"],
-                          "strength": strength["category"], "score": strength["score"]},
-            "four_pillars": {k: {"stem": v["stem"], "branch": v["branch"]} 
-                           for k, v in pillars.items() if k != "day_master"},
-            "useful_gods": useful,
-            "special_structures": structures,
-            "ten_gods_mapping": ten_gods
-        }
-        st.code(json.dumps(export_data, indent=2, ensure_ascii=False, default=str), language="json")
-        st.download_button("⬇️ Download JSON", json.dumps(export_data, indent=2, ensure_ascii=False, default=str),
-                          f"bazi_{birth_date}.json", "application/json", use_container_width=True)
+    if st.session_state.get("user_profile"):
+        profile = st.session_state.user_profile
+        st.markdown("### 👤 Your BaZi")
+        st.markdown(f"**{profile['day_master']}**")
+        st.markdown(f"{profile['polarity']} {profile['element']} • {profile['strength']}")
+        if profile.get('useful_gods'):
+            st.caption(f"Useful: {', '.join(profile['useful_gods'])}")
+    else:
+        st.info("No BaZi profile set")
+
+# Footer
+st.markdown("---")
+st.caption("🌟 Ming Qimen 明奇门 | BaZi Calculator v4.0")
